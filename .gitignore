@@ -1,0 +1,42 @@
+# Dependencies - do not commit (run npm install / pip install)
+node_modules/
+frontend/node_modules/
+backend/venv/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+*.egg-info/
+*.egg/
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+*.env
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*.swo
+
+# Logs and temp
+*.log
+npm-debug.log*
+.cache/
+
+# Firebase
+.firebase/
+*-debug.log
+*-debug.log.*

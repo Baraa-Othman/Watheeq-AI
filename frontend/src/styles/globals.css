@@ -1,0 +1,4 @@
+/* TODO: Global styles - Tailwind directives, CSS variables, base styles */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
