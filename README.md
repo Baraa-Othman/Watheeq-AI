@@ -76,12 +76,30 @@ pip install -r requirements.txt
 Create `backend/.env`:
 
 ```env
+# Firebase Admin SDK (service account)
 FIREBASE_PROJECT_ID=
 FIREBASE_PRIVATE_KEY=
 FIREBASE_CLIENT_EMAIL=
+
+# Authentica SMS OTP
 AUTHINTICA_API_KEY=
-AUTHINTICA_API_URL=
+AUTHENTICA_BASE_URL=https://api.authentica.sa
+
+# CORS — comma-separated allowed origins
+CORS_ORIGINS_STR=http://localhost:3000
+
+# Gmail SMTP (for approval/rejection emails)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+EMAIL_FROM=your-email@gmail.com
+
+# Public app URL (used in email links)
+APP_URL=http://localhost:3000
 ```
+
+> **Gmail app password**: Go to Google Account → Security → 2-Step Verification → App passwords. Generate a password for "Mail" and use it as `SMTP_PASSWORD`. Do NOT use your regular Gmail password.
 
 Run the API server:
 

@@ -10,7 +10,7 @@ router = APIRouter()
 
 class SendOtpRequest(BaseModel):
     phone: str
-    context: str = "login"   # "login" | "register"
+    context: str = "login"   # "login" | "register" | "examiner_register"
     national_id: Optional[str] = None
     email: Optional[str] = None
 
@@ -67,6 +67,27 @@ async def signup(req: SignupRequest):
         email=req.email,
         hospital_name=req.hospital_name,
         organization=req.organization,
+    )
+
+
+class ExaminerRegisterRequest(BaseModel):
+    phone: str
+    full_name: str
+    national_id: str
+    email: str
+
+
+@router.post("/examiner/register", summary="Submit a Claims Examiner registration request")
+async def examiner_register(req: ExaminerRegisterRequest):
+    """
+    Creates a pending examiner_requests document in Firestore.
+    No user account is created — admin must approve first.
+    """
+    return await auth_service.register_examiner_request(
+        phone=req.phone,
+        full_name=req.full_name,
+        national_id=req.national_id,
+        email=req.email,
     )
 
 

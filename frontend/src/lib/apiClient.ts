@@ -19,3 +19,19 @@ export async function apiFetch(
   });
 }
 
+/**
+ * Like apiFetch but automatically attaches the Firebase ID token as a Bearer header.
+ * Pass the Firebase User object from useAuth().user.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function apiFetchAuth(path: string, firebaseUser: any, init?: RequestInit): Promise<Response> {
+  const idToken: string = await firebaseUser.getIdToken();
+  return apiFetch(path, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+      ...init?.headers,
+    },
+  });
+}
+

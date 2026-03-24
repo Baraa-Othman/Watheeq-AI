@@ -18,6 +18,16 @@ class Settings(BaseSettings):
     # CORS — stored as a plain string, split at startup
     CORS_ORIGINS_STR: str = "http://localhost:3000"
 
+    # Email (Gmail SMTP)
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    EMAIL_FROM: str = ""
+
+    # Public app URL — used in email links
+    APP_URL: str = "http://localhost:3000"
+
     @property
     def CORS_ORIGINS(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS_STR.split(",") if o.strip()]

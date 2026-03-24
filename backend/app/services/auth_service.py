@@ -34,10 +34,20 @@ async def send_otp(phone: str, context: str = "login", national_id: str | None =
     user_exists = db.collection("users").document(uid).get().exists
 
     if context == "login" and not user_exists:
+        # Check if there's a pending/rejected examiner request for this phone
+        req_snaps = list(db.collection("examiner_requests").where("phone", "==", phone).limit(1).stream())
+        if req_snaps:
+            req_data = req_snaps[0].to_dict()
+            status = req_data.get("status")
+            if status == "pending":
+                raise HTTPException(status_code=403, detail="Your registration request is still pending approval.")
+            if status == "rejected":
+                raise HTTPException(status_code=403, detail="Your registration request has been rejected. Please contact support.")
         raise HTTPException(
             status_code=404,
             detail="No account found for this number. Please register first.",
         )
+
     if context == "register" and user_exists:
         raise HTTPException(
             status_code=409,
@@ -53,6 +63,44 @@ async def send_otp(phone: str, context: str = "login", national_id: str | None =
             dupes = list(db.collection("users").where("email", "==", email).limit(1).stream())
             if dupes:
                 raise HTTPException(status_code=409, detail="This email address is already registered.")
+
+    if context == "examiner_register":
+        # Block if phone already has an account
+        if user_exists:
+            raise HTTPException(status_code=409, detail="An account already exists for this number. Please login.")
+        # Block if there's already a pending or approved request
+        existing = list(
+            db.collection("examiner_requests")
+            .where("phone", "==", phone)
+            .where("status", "in", ["pending", "approved"])
+            .limit(1).stream()
+        )
+        if existing:
+            raise HTTPException(status_code=409, detail="A registration request already exists for this number.")
+        # Check NID across users + examiner_requests
+        if national_id:
+            dupes = list(db.collection("users").where("nationalId", "==", national_id).limit(1).stream())
+            if not dupes:
+                dupes = list(
+                    db.collection("examiner_requests")
+                    .where("national_id", "==", national_id)
+                    .where("status", "in", ["pending", "approved"])
+                    .limit(1).stream()
+                )
+            if dupes:
+                raise HTTPException(status_code=409, detail="This National ID or Iqama is already in use.")
+        # Check email across users + examiner_requests
+        if email:
+            dupes = list(db.collection("users").where("email", "==", email).limit(1).stream())
+            if not dupes:
+                dupes = list(
+                    db.collection("examiner_requests")
+                    .where("email", "==", email)
+                    .where("status", "in", ["pending", "approved"])
+                    .limit(1).stream()
+                )
+            if dupes:
+                raise HTTPException(status_code=409, detail="This email address is already in use.")
 
     async with httpx.AsyncClient() as client:
         res = await client.post(
@@ -205,6 +253,40 @@ async def signup(
         "success": True,
         "message": "Registration submitted. Awaiting admin approval.",
         "status": "pending",
+    }
+
+
+async def register_examiner_request(
+    phone: str,
+    full_name: str,
+    national_id: str,
+    email: str,
+) -> dict:
+    """Create a pending examiner registration request. No user account is created yet."""
+    if not phone or not full_name or not national_id or not email:
+        raise HTTPException(status_code=400, detail="All fields are required")
+
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+
+    doc_ref = db.collection("examiner_requests").document()
+    request_data = {
+        "id": doc_ref.id,
+        "phone": phone,
+        "full_name": full_name,
+        "national_id": national_id,
+        "email": email,
+        "status": "pending",
+        "created_at": now,
+        "reviewed_at": None,
+        "reviewed_by": None,
+    }
+    doc_ref.set(request_data)
+    print(f"[Firestore] examiner_request created id={doc_ref.id} phone={phone!r}", file=sys.stderr)
+
+    return {
+        "success": True,
+        "message": "Your registration request has been submitted and is pending approval. You will receive an email once your request is reviewed.",
     }
 
 

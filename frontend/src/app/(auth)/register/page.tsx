@@ -14,7 +14,6 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const { signInWithToken } = useAuth();
 
-  // Pre-fill phone from query param if coming from login page
   const phoneFromQuery = searchParams.get("phone") ?? "";
 
   const [role, setRole] = useState<Role>("claimant");
@@ -23,13 +22,12 @@ function RegisterForm() {
   const [nationalId, setNationalId] = useState("");
   const [email, setEmail] = useState("");
   const [hospitalName, setHospitalName] = useState("");
-  const [organization, setOrganization] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState(["", "", "", ""]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [pendingMessage, setPendingMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [formattedPhone, setFormattedPhone] = useState(phoneFromQuery);
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -55,7 +53,7 @@ function RegisterForm() {
         method: "POST",
         body: JSON.stringify({
           phone: formatted,
-          context: "register",
+          context: role === "examiner" ? "examiner_register" : "register",
           national_id: nationalId || undefined,
           email: email || undefined,
         }),
@@ -94,11 +92,12 @@ function RegisterForm() {
 
   const otpValue = otp.join("");
 
-  const handleVerifyAndRegister = async () => {
+  // ── Claimant flow ────────────────────────────────────────────────────────
+  const handleClaimantVerifyAndRegister = async () => {
     setError("");
     setLoading(true);
     try {
-      // Verify OTP first
+      // 1. Verify OTP
       const verifyRes = await apiFetch("/api/auth/verify-otp", {
         method: "POST",
         body: JSON.stringify({ phone: formattedPhone, otp: otpValue }),
@@ -106,24 +105,23 @@ function RegisterForm() {
       const verifyData = await verifyRes.json();
       if (!verifyRes.ok) throw new Error(verifyData.detail || verifyData.error || "OTP verification failed");
 
-      // If user already exists, sign them in
+      // If already exists (shouldn't happen here but handle gracefully)
       if (!verifyData.is_new_user && verifyData.token) {
         const profile = await signInWithToken(verifyData.token);
         router.push(`/dashboard/${profile.role}`);
         return;
       }
 
-      // Register new user
+      // 2. Create claimant account
       const regRes = await apiFetch("/api/auth/signup", {
         method: "POST",
         body: JSON.stringify({
           phone: formattedPhone,
           full_name: fullName,
-          role,
+          role: "claimant",
           national_id: nationalId || undefined,
           email: email || undefined,
           hospital_name: hospitalName || undefined,
-          organization: organization || undefined,
         }),
       });
       const regData = await regRes.json();
@@ -133,7 +131,7 @@ function RegisterForm() {
         const profile = await signInWithToken(regData.token);
         router.push(`/dashboard/${profile.role}`);
       } else {
-        setPendingMessage(regData.message);
+        setSuccessMessage(regData.message || "Account created.");
         setSuccess(true);
       }
     } catch (err: unknown) {
@@ -143,20 +141,62 @@ function RegisterForm() {
     }
   };
 
-  const claimantFilled = role === "claimant"
-    ? fullName.trim() && nationalId.trim() && email.trim() && hospitalName.trim() && phone.trim()
+  // ── Examiner flow ─────────────────────────────────────────────────────────
+  const handleExaminerVerifyAndRegister = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      // 1. Verify OTP (just to confirm phone ownership — no user account yet)
+      const verifyRes = await apiFetch("/api/auth/verify-otp", {
+        method: "POST",
+        body: JSON.stringify({ phone: formattedPhone, otp: otpValue }),
+      });
+      const verifyData = await verifyRes.json();
+      if (!verifyRes.ok) throw new Error(verifyData.detail || verifyData.error || "OTP verification failed");
+
+      // 2. Submit registration request
+      const reqRes = await apiFetch("/api/auth/examiner/register", {
+        method: "POST",
+        body: JSON.stringify({
+          phone: formattedPhone,
+          full_name: fullName,
+          national_id: nationalId,
+          email: email,
+        }),
+      });
+      const reqData = await reqRes.json();
+      if (!reqRes.ok) throw new Error(reqData.detail || reqData.error || "Submission failed");
+
+      setSuccessMessage(reqData.message);
+      setSuccess(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Submission failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyAndSubmit = () => {
+    if (role === "examiner") handleExaminerVerifyAndRegister();
+    else handleClaimantVerifyAndRegister();
+  };
+
+  // Validation
+  const claimantReady = role === "claimant"
+    ? Boolean(fullName.trim() && nationalId.trim() && email.trim() && hospitalName.trim() && phone.trim())
     : true;
-  const examinerFilled = role === "examiner"
-    ? fullName.trim() && nationalId.trim() && phone.trim()
+  const examinerReady = role === "examiner"
+    ? Boolean(fullName.trim() && nationalId.trim() && email.trim() && phone.trim())
     : true;
-  const detailsFilled = claimantFilled && examinerFilled;
-  const canSubmit = otpSent ? otpValue.length === 4 : Boolean(detailsFilled);
+  const detailsFilled = claimantReady && examinerReady;
+  const canSubmit = otpSent ? otpValue.length === 4 : detailsFilled;
 
   const handlePrimary = () => {
-    if (otpSent) handleVerifyAndRegister();
+    if (otpSent) handleVerifyAndSubmit();
     else handleSendOtp();
   };
 
+  // ── Success screen ────────────────────────────────────────────────────────
   if (success) {
     return (
       <div className="w-full max-w-[400px]">
@@ -170,9 +210,11 @@ function RegisterForm() {
               <polyline points="22 4 12 14.01 9 11.01" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold mb-2" style={{ color: "#050508" }}>You&apos;re all set!</h2>
+          <h2 className="text-xl font-bold mb-2" style={{ color: "#050508" }}>
+            {role === "examiner" ? "Request Submitted" : "You're all set!"}
+          </h2>
           <p className="text-[13px] mb-6 leading-relaxed" style={{ color: "rgba(5,5,8,0.45)" }}>
-            {pendingMessage || "Your account is under review. We'll notify you once approved."}
+            {successMessage || "Your request has been received."}
           </p>
           <Link
             href="/login"
@@ -189,6 +231,7 @@ function RegisterForm() {
     );
   }
 
+  // ── Form ──────────────────────────────────────────────────────────────────
   return (
     <div className="w-full max-w-[400px]">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
@@ -196,7 +239,9 @@ function RegisterForm() {
           Create account
         </h1>
         <p className="text-[14px] mb-7" style={{ color: "rgba(5,5,8,0.45)" }}>
-          Join Watheeq as a claimant or examiner
+          {role === "examiner"
+            ? "Submit a registration request as a Claims Examiner"
+            : "Join Watheeq as a claimant"}
         </p>
 
         {error && (
@@ -215,11 +260,7 @@ function RegisterForm() {
 
         <div
           className="rounded-2xl border overflow-hidden"
-          style={{
-            background: "#fff",
-            borderColor: "#e8e8f0",
-            boxShadow: "0 1px 3px rgba(5,5,8,0.03), 0 6px 24px rgba(5,5,8,0.04)",
-          }}
+          style={{ background: "#fff", borderColor: "#e8e8f0", boxShadow: "0 1px 3px rgba(5,5,8,0.03), 0 6px 24px rgba(5,5,8,0.04)" }}
         >
           {/* Role selector */}
           <div className="px-5 pt-5 pb-3">
@@ -233,13 +274,14 @@ function RegisterForm() {
               ]).map((opt) => (
                 <button
                   key={opt.id}
-                  onClick={() => { setRole(opt.id); if (otpSent) { setOtpSent(false); setOtp(["", "", "", ""]); } }}
+                  onClick={() => { setRole(opt.id); if (otpSent) { setOtpSent(false); setOtp(["", "", "", ""]); setError(""); } }}
                   className="flex-1 py-2.5 rounded-lg text-[13px] font-semibold transition-all border"
                   style={{
                     background: role === opt.id ? "#0004E8" : "transparent",
                     color: role === opt.id ? "#fff" : "rgba(5,5,8,0.5)",
                     borderColor: role === opt.id ? "#0004E8" : "#e8e8f0",
                   }}
+                  disabled={otpSent}
                 >
                   {opt.label}
                 </button>
@@ -247,10 +289,18 @@ function RegisterForm() {
             </div>
           </div>
 
+          {/* Examiner info banner */}
+          {role === "examiner" && !otpSent && (
+            <div className="mx-5 mb-1 px-3.5 py-2.5 rounded-lg text-[12px] leading-relaxed" style={{ background: "rgba(0,4,232,0.05)", color: "rgba(5,5,8,0.55)" }}>
+              Your request will be reviewed by an admin before your account is activated.
+            </div>
+          )}
+
           <div className="px-5"><div className="h-px" style={{ background: "#f0f0f5" }} /></div>
 
           {/* Form fields */}
           <div className="px-5 py-4 space-y-3.5">
+
             {/* Full name — both roles */}
             <div>
               <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)" }}>
@@ -283,41 +333,41 @@ function RegisterForm() {
               />
             </div>
 
-            {/* Claimant-only fields */}
+            {/* Email — both roles */}
+            <div>
+              <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)" }}>
+                Email address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full px-3.5 py-2.5 rounded-lg border text-[14px] outline-none transition-all"
+                style={{ borderColor: "#e8e8f0", color: "#050508" }}
+                disabled={otpSent}
+              />
+            </div>
+
+            {/* Hospital name — claimant only */}
             {role === "claimant" && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className="space-y-3.5 overflow-hidden">
-                <div>
-                  <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)" }}>
-                    Email address
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="w-full px-3.5 py-2.5 rounded-lg border text-[14px] outline-none transition-all"
-                    style={{ borderColor: "#e8e8f0", color: "#050508" }}
-                    disabled={otpSent}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)" }}>
-                    Hospital name
-                  </label>
-                  <input
-                    type="text"
-                    value={hospitalName}
-                    onChange={(e) => setHospitalName(e.target.value)}
-                    placeholder="e.g. King Fahad Medical City"
-                    className="w-full px-3.5 py-2.5 rounded-lg border text-[14px] outline-none transition-all"
-                    style={{ borderColor: "#e8e8f0", color: "#050508" }}
-                    disabled={otpSent}
-                  />
-                </div>
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className="overflow-hidden">
+                <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)" }}>
+                  Hospital name
+                </label>
+                <input
+                  type="text"
+                  value={hospitalName}
+                  onChange={(e) => setHospitalName(e.target.value)}
+                  placeholder="e.g. King Fahad Medical City"
+                  className="w-full px-3.5 py-2.5 rounded-lg border text-[14px] outline-none transition-all"
+                  style={{ borderColor: "#e8e8f0", color: "#050508" }}
+                  disabled={otpSent}
+                />
               </motion.div>
             )}
 
-            {/* Phone number — both roles */}
+            {/* Phone — both roles */}
             <div>
               <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)" }}>
                 Phone number
@@ -340,26 +390,6 @@ function RegisterForm() {
                 />
               </div>
             </div>
-
-            {/* Examiner-only fields */}
-            {role === "examiner" && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className="space-y-3.5 overflow-hidden">
-                <div>
-                  <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)" }}>
-                    Organization
-                  </label>
-                  <input
-                    type="text"
-                    value={organization}
-                    onChange={(e) => setOrganization(e.target.value)}
-                    placeholder="Insurance company name"
-                    className="w-full px-3.5 py-2.5 rounded-lg border text-[14px] outline-none transition-all"
-                    style={{ borderColor: "#e8e8f0", color: "#050508" }}
-                    disabled={otpSent}
-                  />
-                </div>
-              </motion.div>
-            )}
           </div>
 
           {/* OTP section */}
@@ -418,10 +448,10 @@ function RegisterForm() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  {otpSent ? "Creating account..." : "Sending code..."}
+                  {otpSent ? (role === "examiner" ? "Submitting request..." : "Creating account...") : "Sending code..."}
                 </>
               ) : otpSent ? (
-                "Create account"
+                role === "examiner" ? "Submit Request" : "Create Account"
               ) : (
                 "Continue"
               )}
