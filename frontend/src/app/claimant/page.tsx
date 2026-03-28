@@ -1,4 +1,11 @@
-// TODO: Claimant portal - dashboard or entry point for claimants
+"use client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
 export default function ClaimantPage() {
-  return <main></main>;
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/claimant/claims");
+  }, [router]);
+  return null;
 }
