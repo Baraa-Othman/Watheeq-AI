@@ -3,7 +3,7 @@ import traceback
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from app.api import auth, admin, policies as policies_api, claims as claims_api
+from app.api import auth, admin, policies as policies_api, claims as claims_api, examiner as examiner_api
 from app.core.config import settings
 
 app = FastAPI(
@@ -25,6 +25,7 @@ app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(policies_api.admin_router, prefix="/api/admin", tags=["admin-policies"])
 app.include_router(policies_api.router, prefix="/api", tags=["policies"])
 app.include_router(claims_api.router, prefix="/api", tags=["claims"])
+app.include_router(examiner_api.router, prefix="/api/examiner", tags=["examiner"])
 
 
 @app.exception_handler(Exception)

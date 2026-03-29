@@ -1,4 +1,5 @@
-// TODO: Examiner portal - dashboard or entry point for claims examiners
+import { redirect } from "next/navigation";
+
 export default function ExaminerPage() {
-  return <main></main>;
+  redirect("/examiner/claims");
 }
