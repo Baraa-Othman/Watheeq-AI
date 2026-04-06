@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { apiFetchAuth } from "@/lib/apiClient";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 
 type Status = "pending" | "approved" | "rejected";
 
@@ -157,8 +158,8 @@ export default function ExaminerRequestsPage() {
       {/* Header */}
       <header className="h-16 border-b flex items-center justify-between px-6" style={{ borderColor: "#e2e2ee", background: "#fff" }}>
         <div className="flex items-center gap-3">
-          <Link href="/dashboard/admin" className="font-bold text-lg tracking-tight" style={{ color: "#050508" }}>
-            Watheeq AI
+          <Link href="/dashboard/admin">
+            <Image src="/watheeq-logo.png" alt="Watheeq" width={110} height={30} />
           </Link>
           <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ background: "rgba(0,4,232,0.08)", color: "#0004E8" }}>
             Admin Panel

@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import { apiFetchAuth } from "@/lib/apiClient";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 
 const navLinks = [
@@ -88,20 +89,8 @@ export default function AdminDashboard() {
       >
         {/* Logo */}
         <div className="px-6 pt-7 pb-8 border-b" style={{ borderColor: "#e2e2ee" }}>
-          <Link href="/dashboard/admin" className="inline-flex items-center gap-2">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ background: "#0004E8" }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2">
-                <path d="M12 2L3 7l9 5 9-5-9-5z" />
-                <path d="M3 12l9 5 9-5" />
-                <path d="M3 17l9 5 9-5" />
-              </svg>
-            </div>
-            <span className="font-bold text-[15px] tracking-tight" style={{ color: "#050508" }}>
-              Watheeq AI
-            </span>
+          <Link href="/dashboard/admin" className="inline-flex items-center">
+            <Image src="/watheeq-logo.png" alt="Watheeq" width={120} height={32} />
           </Link>
         </div>
 
@@ -174,8 +163,8 @@ export default function AdminDashboard() {
           className="lg:hidden flex items-center justify-between px-5 py-4 border-b sticky top-0 z-30"
           style={{ background: "#fff", borderColor: "#e2e2ee" }}
         >
-          <Link href="/dashboard/admin" className="font-bold text-[15px] tracking-tight" style={{ color: "#050508" }}>
-            Watheeq AI
+          <Link href="/dashboard/admin">
+            <Image src="/watheeq-logo.png" alt="Watheeq" width={110} height={30} />
           </Link>
           <button
             onClick={async () => { await signOut(); router.push("/login"); }}

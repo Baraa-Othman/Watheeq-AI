@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { motion } from "framer-motion";
@@ -73,19 +74,8 @@ export default function ClaimantLayout({ children }: { children: React.ReactNode
       >
         {/* Logo */}
         <div className="px-6 pt-7 pb-8 border-b" style={{ borderColor: "#e2e2ee" }}>
-          <Link href="/claimant/claims" className="inline-flex items-center gap-2">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ background: "#0004E8" }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2">
-                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
-                <rect x="9" y="3" width="6" height="4" rx="1" />
-              </svg>
-            </div>
-            <span className="font-bold text-[15px] tracking-tight" style={{ color: "#050508" }}>
-              Watheeq AI
-            </span>
+          <Link href="/claimant/claims" className="inline-flex items-center">
+            <Image src="/watheeq-logo.png" alt="Watheeq" width={120} height={32} />
           </Link>
         </div>
 
@@ -150,8 +140,8 @@ export default function ClaimantLayout({ children }: { children: React.ReactNode
           className="lg:hidden flex items-center justify-between px-5 py-4 border-b sticky top-0 z-30"
           style={{ background: "#fff", borderColor: "#e2e2ee" }}
         >
-          <Link href="/claimant/claims" className="font-bold text-[15px] tracking-tight" style={{ color: "#050508" }}>
-            Watheeq AI
+          <Link href="/claimant/claims">
+            <Image src="/watheeq-logo.png" alt="Watheeq" width={110} height={30} />
           </Link>
           <button
             onClick={signOut}

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { apiFetchAuth } from "@/lib/apiClient";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 
 interface Policy {
   id: string;
@@ -119,8 +120,8 @@ export default function PoliciesPage() {
       {/* Header */}
       <header className="h-16 border-b flex items-center justify-between px-6" style={{ borderColor: "#e2e2ee", background: "#fff" }}>
         <div className="flex items-center gap-3">
-          <Link href={backHref} className="font-bold text-lg tracking-tight" style={{ color: "#050508" }}>
-            Watheeq AI
+          <Link href={backHref}>
+            <Image src="/watheeq-logo.png" alt="Watheeq" width={110} height={30} />
           </Link>
           <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ background: "rgba(0,4,232,0.08)", color: "#0004E8" }}>
             {roleLabel[profile.role] ?? "Dashboard"}

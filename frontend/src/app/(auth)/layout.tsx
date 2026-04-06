@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -33,7 +34,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         {/* Logo */}
         <div className="relative z-10">
           <Link href="/" className="inline-flex items-center gap-2">
-            <span className="text-white font-bold text-xl tracking-tight">Watheeq AI</span>
+            <Image src="/watheeq-logo.png" alt="Watheeq" width={130} height={34} className="brightness-0 invert" />
           </Link>
         </div>
 
@@ -68,9 +69,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="flex-1 flex flex-col min-h-screen">
         <header className="lg:hidden p-5">
           <Link href="/" className="inline-flex items-center gap-2">
-            <span className="font-bold text-lg tracking-tight" style={{ color: "#050508" }}>
-              Watheeq AI
-            </span>
+            <Image src="/watheeq-logo.png" alt="Watheeq" width={110} height={30} />
           </Link>
         </header>
         <main className="flex-1 flex items-center justify-center px-5 py-6 lg:px-12">

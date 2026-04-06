@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetchAuth } from "@/lib/apiClient";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 
 type ClaimStatus = "submitted" | "under review" | "approved" | "rejected" | "cancelled";
 type Tab = "all" | "submitted" | "under review" | "approved" | "rejected";
@@ -139,7 +140,7 @@ export default function ExaminerClaimsPage() {
         style={{ borderColor: "#e2e2ee", background: "#fff" }}
       >
         <div className="flex items-center gap-3">
-          <span className="font-bold text-lg tracking-tight" style={{ color: "#050508" }}>Watheeq AI</span>
+          <Image src="/watheeq-logo.png" alt="Watheeq" width={110} height={30} />
           <span
             className="px-3 py-1 rounded-full text-xs font-semibold"
             style={{ background: "rgba(0,4,232,0.08)", color: "#0004E8" }}
