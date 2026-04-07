@@ -191,7 +191,7 @@ export default function ExaminerRequestsPage() {
             </p>
           </div>
           <button
-            onClick={fetchRequests}
+            onClick={() => fetchRequests()}
             className="flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-all"
             style={{ borderColor: "#e2e2ee", color: "rgba(5,5,8,0.55)" }}
           >
