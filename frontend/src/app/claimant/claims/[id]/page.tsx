@@ -74,6 +74,7 @@ interface Claim {
   status: ClaimStatus;
   submittingTime: string;
   examinerID: string;
+  examinerResponse?: string;
 }
 
 const STATUS_CONFIG: Record<ClaimStatus, { label: string; bg: string; color: string; dot: string; desc: string }> = {
@@ -311,6 +312,25 @@ export default function ClaimDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Examiner Response card — shown to claimant after decision */}
+      {claim.examinerResponse && (
+        <div
+          className="rounded-2xl border mb-5"
+          style={{ background: "#fff", borderColor: "#e2e2ee", boxShadow: "0 1px 3px rgba(5,5,8,0.04)" }}
+        >
+          <div className="px-6 pt-5 pb-3 border-b" style={{ borderColor: "#f0f0f5" }}>
+            <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "#0004E8" }}>
+              Examiner Response
+            </p>
+          </div>
+          <div className="p-6">
+            <p className="text-[14px]" style={{ color: "#050508" }}>
+              {claim.examinerResponse}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Cancel section */}
       {canCancel && (

@@ -76,6 +76,7 @@ interface Claim {
   status: ClaimStatus;
   submittingTime: string;
   examinerID: string;
+  examinerResponse?: string;
 }
 
 const STATUS_CONFIG: Record<ClaimStatus, { label: string; bg: string; color: string; dot: string; desc: string }> = {
@@ -112,6 +113,8 @@ export default function ExaminerClaimDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [pendingDecision, setPendingDecision] = useState<Decision | null>(null);
+  const [selectedDecision, setSelectedDecision] = useState<Decision | null>(null);
+  const [examinerResponse, setExaminerResponse] = useState("");
   const [deciding, setDeciding] = useState(false);
   const [decideError, setDecideError] = useState("");
 
@@ -142,11 +145,12 @@ export default function ExaminerClaimDetailPage() {
     try {
       const res = await apiFetchAuth(`/api/examiner/claims/${id}/decide`, user, {
         method: "PATCH",
-        body: JSON.stringify({ decision: pendingDecision }),
+        body: JSON.stringify({ decision: pendingDecision, examinerResponse }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Failed to submit decision");
-      setClaim((prev) => prev ? { ...prev, status: pendingDecision } : prev);
+      setClaim((prev) => prev ? { ...prev, status: pendingDecision, examinerResponse: pendingDecision === "approved" && !examinerResponse ? "approved as requested" : examinerResponse } : prev);
+      setSelectedDecision(pendingDecision);
       setPendingDecision(null);
     } catch (err: unknown) {
       setDecideError(err instanceof Error ? err.message : "Decision failed");
@@ -305,6 +309,58 @@ export default function ExaminerClaimDetailPage() {
                 </div>
               </div>
 
+              {/* ── Response History (if exists) ── */}
+              {claim.examinerResponse && (
+                <div
+                  className="rounded-2xl border mb-5"
+                  style={{ background: "#fff", borderColor: "#e2e2ee", boxShadow: "0 1px 3px rgba(5,5,8,0.04)" }}
+                >
+                  <div className="px-6 pt-5 pb-3 border-b" style={{ borderColor: "#f0f0f5" }}>
+                    <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "#0004E8" }}>
+                      Examiner Response
+                    </p>
+                  </div>
+                  <div className="p-6">
+                    <p className="text-[14px]" style={{ color: "#050508" }}>
+                      {claim.examinerResponse}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Examiner POV / Response ── */}
+              {canDecide && (
+                <div
+                  className="rounded-2xl border mb-5"
+                  style={{ background: "#fff", borderColor: "#e2e2ee", boxShadow: "0 1px 3px rgba(5,5,8,0.04)" }}
+                >
+                  <div className="px-6 pt-5 pb-3 border-b" style={{ borderColor: "#f0f0f5" }}>
+                    <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "#0004E8" }}>
+                      Examiner POV
+                    </p>
+                  </div>
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+                      <Field label="AI Decision" value="Approved (Placeholder)" />
+                      <Field label="AI Message" value="This claim meets the basic policy requirements. (Placeholder)" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(5,5,8,0.35)" }}>
+                        Examiner Response (Optional)
+                      </p>
+                      <textarea
+                        className="w-full rounded-xl border p-3 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#0004E8]"
+                        style={{ borderColor: "#e2e2ee", color: "#050508", background: "#f9f9fc" }}
+                        rows={3}
+                        placeholder="Enter response here..."
+                        value={examinerResponse}
+                        onChange={(e) => setExaminerResponse(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Decision panel */}
               {canDecide && (
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
@@ -314,26 +370,59 @@ export default function ExaminerClaimDetailPage() {
                   <p className="text-[13px] mb-4" style={{ color: "rgba(5,5,8,0.5)" }}>
                     Review the documents above, then approve or reject this claim. The claimant will be notified by email.
                   </p>
-                  <div className="flex gap-3 flex-wrap">
-                    <button id="btn-approve" onClick={() => setPendingDecision("approved")}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white transition-all"
-                      style={{ background: "#16a34a" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#15803d")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "#16a34a")}>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M20 6L9 17l-5-5" /></svg>
-                      Approve Claim
+                  <div className="flex flex-col gap-3 mb-5">
+                    {/* Approve List Item */}
+                    <button
+                      onClick={() => setSelectedDecision("approved")}
+                      className="flex items-center gap-3 p-4 rounded-xl border text-left transition-all"
+                      style={{
+                        borderColor: selectedDecision === "approved" ? "#0004E8" : "#e2e2ee",
+                        background: selectedDecision === "approved" ? "rgba(0,4,232,0.04)" : "#fff"
+                      }}
+                      onMouseEnter={(e) => { if (selectedDecision !== "approved") e.currentTarget.style.background = "rgba(0,4,232,0.02)"; }}
+                      onMouseLeave={(e) => { if (selectedDecision !== "approved") e.currentTarget.style.background = "#fff"; }}
+                    >
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selectedDecision === "approved" ? "border-[#0004E8]" : "border-[#e2e2ee]"}`}>
+                        {selectedDecision === "approved" && <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#0004E8" }} />}
+                      </div>
+                      <div>
+                        <p className="text-[14px] font-semibold" style={{ color: selectedDecision === "approved" ? "#0004E8" : "#050508" }}>Approve Claim</p>
+                        <p className="text-[12px]" style={{ color: "rgba(5,5,8,0.5)" }}>Mark the claim as approved.</p>
+                      </div>
                     </button>
-                    <button id="btn-reject" onClick={() => setPendingDecision("rejected")}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold border transition-all"
-                      style={{ borderColor: "#fca5a5", color: "#dc2626", background: "transparent" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                        <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
-                      </svg>
-                      Reject Claim
+
+                    {/* Reject List Item */}
+                    <button
+                      onClick={() => setSelectedDecision("rejected")}
+                      className="flex items-center gap-3 p-4 rounded-xl border text-left transition-all"
+                      style={{
+                        borderColor: selectedDecision === "rejected" ? "#0004E8" : "#e2e2ee",
+                        background: selectedDecision === "rejected" ? "rgba(0,4,232,0.04)" : "#fff"
+                      }}
+                      onMouseEnter={(e) => { if (selectedDecision !== "rejected") e.currentTarget.style.background = "rgba(0,4,232,0.02)"; }}
+                      onMouseLeave={(e) => { if (selectedDecision !== "rejected") e.currentTarget.style.background = "#fff"; }}
+                    >
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selectedDecision === "rejected" ? "border-[#0004E8]" : "border-[#e2e2ee]"}`}>
+                        {selectedDecision === "rejected" && <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#0004E8" }} />}
+                      </div>
+                      <div>
+                        <p className="text-[14px] font-semibold" style={{ color: selectedDecision === "rejected" ? "#0004E8" : "#050508" }}>Reject Claim</p>
+                        <p className="text-[12px]" style={{ color: "rgba(5,5,8,0.5)" }}>Mark the claim as rejected.</p>
+                      </div>
                     </button>
                   </div>
+
+                  {selectedDecision && (
+                    <motion.button
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      onClick={() => setPendingDecision(selectedDecision)}
+                      className="w-full mt-2 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[14px] font-semibold text-white transition-opacity hover:opacity-90"
+                      style={{ background: "#0004E8" }}
+                    >
+                      Submit Decision
+                    </motion.button>
+                  )}
                 </motion.div>
               )}
 

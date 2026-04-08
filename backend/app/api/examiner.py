@@ -163,6 +163,7 @@ def pick_claim(claim_id: str, examiner: dict = Depends(require_examiner)):
 
 class DecideRequest(BaseModel):
     decision: Literal["approved", "rejected"]
+    examinerResponse: str = ""
 
 
 @router.patch("/claims/{claim_id}/decide", summary="Approve or reject a claim under review")
@@ -191,7 +192,14 @@ def decide_claim(claim_id: str, body: DecideRequest, examiner: dict = Depends(re
             detail=f"Claim is not under review — current status is '{data.get('status')}'"
         )
 
-    ref.update({"status": body.decision})
+    final_response = body.examinerResponse
+    if body.decision == "approved" and not final_response:
+        final_response = "approved as requested"
+
+    ref.update({
+        "status": body.decision,
+        "examinerResponse": final_response
+    })
     print(f"[Examiner] Decision '{body.decision}' for claim={claim_id} by examiner={uid}", file=sys.stderr)
 
     # Send email notification to claimant (fire-and-forget — don't fail the request if email fails)

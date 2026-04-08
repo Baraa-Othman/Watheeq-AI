@@ -23,5 +23,6 @@ class ClaimResponse(BaseModel):
     treatmentType: Optional[str]
     medicalReport: str
     supportingDocuments: Optional[str]
+    examinerResponse: Optional[str] = ""
     status: str
     submittingTime: Optional[str]

@@ -23,6 +23,7 @@ def submit_claim(claimant_uid: str, data: SubmitClaimRequest) -> dict:
         "treatmentType": data.treatmentType,
         "medicalReport": data.medicalReport,
         "supportingDocuments": data.supportingDocuments or "",
+        "examinerResponse": "",
         "status": "submitted",
         "submittingTime": now,
     }
