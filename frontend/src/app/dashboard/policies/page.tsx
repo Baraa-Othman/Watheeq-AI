@@ -7,6 +7,7 @@ import { apiFetchAuth } from "@/lib/apiClient";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
+import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 
 interface Policy {
   id: string;
@@ -55,6 +56,60 @@ function DownloadButton({ policyId, policyName, user }: { policyId: string; poli
       )}
       Download
     </button>
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function PreviewButton({ policyId, policyName, user }: { policyId: string; policyName: string; user: any }) {
+  const [loading, setLoading] = useState(false);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+
+  const handlePreview = async () => {
+    setOpen(true);
+    if (blobUrl) return;
+    setLoading(true);
+    try {
+      const res = await apiFetchAuth(`/api/policies/${policyId}/download`, user);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.detail || "Preview failed");
+      }
+      const blob = await res.blob();
+      setBlobUrl(URL.createObjectURL(blob));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Preview failed");
+      setOpen(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <button
+        onClick={handlePreview}
+        disabled={loading}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-80 disabled:opacity-50"
+        style={{ background: "rgba(0,4,232,0.06)", color: "#0004E8", border: "1px solid rgba(0,4,232,0.15)" }}
+      >
+        {loading ? <Spinner size={3} /> : (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        )}
+        Preview
+      </button>
+      {open && (
+        <PDFPreviewModal
+          policyName={policyName}
+          blobUrl={blobUrl}
+          loading={loading}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -201,7 +256,10 @@ export default function PoliciesPage() {
                         </div>
                       </td>
                       <td className="px-5 py-4">
-                        <DownloadButton policyId={policy.id} policyName={policy.policy_name} user={user} />
+                        <div className="flex gap-2">
+                          <PreviewButton policyId={policy.id} policyName={policy.policy_name} user={user} />
+                          <DownloadButton policyId={policy.id} policyName={policy.policy_name} user={user} />
+                        </div>
                       </td>
                     </motion.tr>
                   ))}
