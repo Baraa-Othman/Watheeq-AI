@@ -33,6 +33,14 @@ class Settings(BaseSettings):
     # Public app URL — used in email links
     APP_URL: str = "http://localhost:3000"
 
+    # Google Gemini — AI claim analysis (Sprint 3)
+    GEMINI_API_KEY: str = ""
+    LLM_MODEL: str = "gemini-3.1-flash-lite-preview"
+    LLM_TEMPERATURE: float = 0.1
+    LLM_MAX_TOKENS: int = 4000
+    MAX_PDF_SIZE_MB: int = 20
+    ANALYSIS_TIMEOUT_SECONDS: int = 60
+
     @property
     def CORS_ORIGINS(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS_STR.split(",") if o.strip()]
@@ -44,3 +52,5 @@ settings = Settings()
 print(f"[Config] Firebase project : {settings.FIREBASE_PROJECT_ID or '(not set)'}", file=sys.stderr)
 print(f"[Config] CORS origins      : {settings.CORS_ORIGINS}", file=sys.stderr)
 print(f"[Config] Authentica key    : {'(set) first 6 chars: ' + settings.AUTHINTICA_API_KEY[:6] if settings.AUTHINTICA_API_KEY else '(not set)'}", file=sys.stderr)
+print(f"[Config] Gemini API key    : {'(set)' if settings.GEMINI_API_KEY else '(not set — AI analysis will fail)'}", file=sys.stderr)
+print(f"[Config] LLM model         : {settings.LLM_MODEL}", file=sys.stderr)
