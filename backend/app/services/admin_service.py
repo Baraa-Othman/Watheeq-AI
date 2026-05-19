@@ -8,6 +8,45 @@ from app.utils.email import send_examiner_approved, send_examiner_rejected
 from app.services.auth_service import _phone_to_uid
 
 
+def parse_datetime(val) -> datetime | None:
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        if val.tzinfo is None:
+            return val.replace(tzinfo=timezone.utc)
+        return val.astimezone(timezone.utc)
+    if hasattr(val, "to_datetime"):
+        try:
+            dt = val.to_datetime()
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc)
+        except Exception:
+            pass
+    if isinstance(val, str):
+        try:
+            s = val
+            if s.endswith("Z"):
+                s = s[:-1] + "+00:00"
+            dt = datetime.fromisoformat(s)
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc)
+        except Exception:
+            pass
+    if hasattr(val, "year") and hasattr(val, "month") and hasattr(val, "day"):
+        try:
+            dt = datetime(val.year, val.month, val.day,
+                          getattr(val, "hour", 0), getattr(val, "minute", 0), getattr(val, "second", 0),
+                          getattr(val, "microsecond", 0), tzinfo=getattr(val, "tzinfo", timezone.utc))
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc)
+        except Exception:
+            pass
+    return None
+
+
 CLAIM_STATUSES = ("submitted", "under review", "approved", "rejected", "cancelled")
 
 
@@ -226,9 +265,9 @@ def get_examiner_performance() -> list[dict]:
 
         # Handling time: (closedTime - pickedTime) for closed claims with both timestamps
         if status in ("approved", "rejected"):
-            picked = c.get("pickedTime")
-            closed = c.get("closedTime")
-            if picked is not None and closed is not None and hasattr(picked, "timestamp") and hasattr(closed, "timestamp"):
+            picked = parse_datetime(c.get("pickedTime"))
+            closed = parse_datetime(c.get("closedTime"))
+            if picked is not None and closed is not None:
                 try:
                     delta = (closed - picked).total_seconds()
                 except Exception:
@@ -302,8 +341,8 @@ def get_claims_volume(year: int, quarter: int) -> dict:
 
     for snap in docs:
         c = snap.to_dict() or {}
-        st = c.get("submittingTime")
-        if st is None or not hasattr(st, "year"):
+        st = parse_datetime(c.get("submittingTime"))
+        if st is None:
             continue
         years_seen.add(st.year)
         if st.year == year:

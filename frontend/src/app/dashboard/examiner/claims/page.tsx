@@ -6,6 +6,8 @@ import { useAuth } from "@/lib/auth-context";
 import { apiFetchAuth } from "@/lib/apiClient";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import { LangProvider, useLang } from "@/lib/lang-context";
+import LangToggle from "@/components/LangToggle";
 
 type ClaimStatus = "submitted" | "under review" | "approved" | "rejected" | "cancelled";
 type Tab = "all" | "submitted" | "under review" | "approved" | "rejected";
@@ -21,31 +23,39 @@ interface Claim {
   examinerID: string;
 }
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "submitted", label: "Submitted" },
-  { key: "under review", label: "Under Review" },
-  { key: "approved", label: "Approved" },
-  { key: "rejected", label: "Rejected" },
+const TABS: { key: Tab; labelKey: string }[] = [
+  { key: "all", labelKey: "tabAll" },
+  { key: "submitted", labelKey: "tabSubmitted" },
+  { key: "under review", labelKey: "tabUnderReview" },
+  { key: "approved", labelKey: "tabApproved" },
+  { key: "rejected", labelKey: "tabRejected" },
 ];
 
-const STATUS_CONFIG: Record<ClaimStatus, { label: string; bg: string; color: string; dot: string }> = {
-  submitted: { label: "Submitted", bg: "rgba(0,4,232,0.07)", color: "#0004E8", dot: "#0004E8" },
-  "under review": { label: "Under Review", bg: "rgba(234,179,8,0.10)", color: "#b45309", dot: "#eab308" },
-  approved: { label: "Approved", bg: "rgba(22,163,74,0.08)", color: "#15803d", dot: "#16a34a" },
-  rejected: { label: "Rejected", bg: "rgba(220,38,38,0.08)", color: "#dc2626", dot: "#dc2626" },
-  cancelled: { label: "Cancelled", bg: "rgba(5,5,8,0.06)", color: "rgba(5,5,8,0.45)", dot: "rgba(5,5,8,0.3)" },
+const STATUS_CONFIG: Record<ClaimStatus, { bg: string; color: string; dot: string }> = {
+  submitted: { bg: "rgba(0,4,232,0.07)", color: "#0004E8", dot: "#0004E8" },
+  "under review": { bg: "rgba(234,179,8,0.10)", color: "#b45309", dot: "#eab308" },
+  approved: { bg: "rgba(22,163,74,0.08)", color: "#15803d", dot: "#16a34a" },
+  rejected: { bg: "rgba(220,38,38,0.08)", color: "#dc2626", dot: "#dc2626" },
+  cancelled: { bg: "rgba(5,5,8,0.06)", color: "rgba(5,5,8,0.45)", dot: "rgba(5,5,8,0.3)" },
 };
 
 function StatusBadge({ status }: { status: ClaimStatus }) {
+  const { t } = useLang();
   const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG["submitted"];
+
+  let labelKey = "statusSubmitted";
+  if (status === "under review") labelKey = "statusUnderReview";
+  else if (status === "approved") labelKey = "statusApproved";
+  else if (status === "rejected") labelKey = "statusRejected";
+  else if (status === "cancelled") labelKey = "statusCancelled";
+
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide uppercase"
       style={{ background: cfg.bg, color: cfg.color }}
     >
       <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cfg.dot }} />
-      {cfg.label}
+      {t(labelKey)}
     </span>
   );
 }
@@ -59,9 +69,10 @@ function formatDate(iso: string) {
   } catch { return iso; }
 }
 
-export default function ExaminerClaimsPage() {
+function ExaminerClaimsPageInner() {
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { t, isRTL } = useLang();
 
   const [claims, setClaims] = useState<Claim[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,7 +144,7 @@ export default function ExaminerClaimsPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "#fafafd" }}>
+    <div className="min-h-screen" style={{ background: "#fafafd" }} dir={isRTL ? "rtl" : "ltr"}>
       {/* Header */}
       <header
         className="h-16 border-b flex items-center justify-between px-6 sticky top-0 z-30"
@@ -145,29 +156,32 @@ export default function ExaminerClaimsPage() {
             className="px-3 py-1 rounded-full text-xs font-semibold"
             style={{ background: "rgba(0,4,232,0.08)", color: "#0004E8" }}
           >
-            Claims Queue
+            {t("claimsQueue")}
           </span>
         </div>
-        <button
-          onClick={() => router.push("/dashboard/examiner")}
-          className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg border transition-all hover:bg-gray-50"
-          style={{ borderColor: "#e2e2ee", color: "rgba(5,5,8,0.55)" }}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-          Dashboard
-        </button>
+        <div className="flex items-center gap-3">
+          <LangToggle compact />
+          <button
+            onClick={() => router.push("/dashboard/examiner")}
+            className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg border transition-all hover:bg-gray-50"
+            style={{ borderColor: "#e2e2ee", color: "rgba(5,5,8,0.55)" }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isRTL ? "rotate-180" : ""}>
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            {isRTL ? "لوحة التحكم" : "Dashboard"}
+          </button>
+        </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-8">
         {/* Page title */}
         <div className="mb-6">
           <h1 className="text-[26px] font-bold tracking-tight" style={{ color: "#050508" }}>
-            Claims Queue
+            {t("claimsQueue")}
           </h1>
           <p className="text-[14px] mt-0.5" style={{ color: "rgba(5,5,8,0.45)" }}>
-            Review and process insurance claims assigned to you
+            {t("claimsQueueSub")}
           </p>
         </div>
 
@@ -190,7 +204,7 @@ export default function ExaminerClaimsPage() {
               <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
             {pickError}
-            <button onClick={() => setPickError("")} className="ml-auto hover:opacity-70">
+            <button onClick={() => setPickError("")} className="ms-auto hover:opacity-70">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
               </svg>
@@ -210,11 +224,11 @@ export default function ExaminerClaimsPage() {
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-medium transition-all whitespace-nowrap flex-shrink-0"
                 style={{
                   background: isActive ? "#fff" : "transparent",
-                  color: isActive ? "#050508" : "rgba(5,5,8,0.5)",
+                  color: isActive ? "#050508" : "rgba(5,5,8,0.55)",
                   boxShadow: isActive ? "0 1px 3px rgba(5,5,8,0.08)" : "none",
                 }}
               >
-                {tab.label}
+                {t(tab.labelKey)}
                 {count > 0 && (
                   <span
                     className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
@@ -256,13 +270,13 @@ export default function ExaminerClaimsPage() {
                 <path d="M9 12h6M9 16h4" />
               </svg>
             </div>
-            <h2 className="text-[18px] font-bold mb-1.5" style={{ color: "#050508" }}>No claims here</h2>
+            <h2 className="text-[18px] font-bold mb-1.5" style={{ color: "#050508" }}>{t("noClaims")}</h2>
             <p className="text-[14px] max-w-xs" style={{ color: "rgba(5,5,8,0.45)" }}>
               {activeTab === "submitted"
-                ? "No submitted claims waiting for review."
+                ? t("noSubmittedClaims")
                 : activeTab === "under review"
-                  ? "You have no claims currently under your review."
-                  : `No ${activeTab} claims to show.`}
+                  ? t("noUnderReviewClaims")
+                  : t("noOtherClaims")}
             </p>
           </motion.div>
         )}
@@ -306,21 +320,22 @@ export default function ExaminerClaimsPage() {
                         </div>
                         <div className="flex flex-wrap gap-x-5 gap-y-1">
                           <span className="text-[13px]" style={{ color: "rgba(5,5,8,0.45)" }}>
-                            <span className="font-medium" style={{ color: "rgba(5,5,8,0.6)" }}>Policy:</span>{" "}
+                            <span className="font-medium" style={{ color: "rgba(5,5,8,0.6)" }}>{t("policyLabel")}</span>{" "}
                             {claim.policyName}
                           </span>
                           {claim.treatmentType && (
                             <span className="text-[13px]" style={{ color: "rgba(5,5,8,0.45)" }}>
-                              <span className="font-medium" style={{ color: "rgba(5,5,8,0.6)" }}>Treatment:</span>{" "}
+                              <span className="font-medium" style={{ color: "rgba(5,5,8,0.6)" }}>{t("treatmentLabel")}</span>{" "}
                               {claim.treatmentType}
                             </span>
                           )}
-                          <span className="text-[13px]" style={{ color: "rgba(5,5,8,0.4)" }}>
+                          <span dir="ltr" className="text-[13px] inline-block font-sans" style={{ color: "rgba(5,5,8,0.4)" }}>
                             {formatDate(claim.submittingTime)}
                           </span>
                         </div>
-                        <p className="text-[11px] mt-2 font-mono" style={{ color: "rgba(5,5,8,0.28)" }}>
-                          Ref: {claim.claimId}
+                        <p className="text-[11px] mt-2" style={{ color: "rgba(5,5,8,0.28)" }}>
+                          <span>{t("refLabel")} </span>
+                          <span className="font-mono inline-block" dir="ltr">{claim.claimId}</span>
                         </p>
                       </div>
 
@@ -342,14 +357,14 @@ export default function ExaminerClaimsPage() {
                                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                                 </svg>
-                                Picking...
+                                {t("pickingBtn")}
                               </>
                             ) : (
                               <>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                                   <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
                                 </svg>
-                                Pick
+                                {t("pickBtn")}
                               </>
                             )}
                           </button>
@@ -364,8 +379,8 @@ export default function ExaminerClaimsPage() {
                             onMouseEnter={(e) => (e.currentTarget.style.background = "#f9f9fc")}
                             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                           >
-                            View
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            {t("viewBtn")}
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isRTL ? "rotate-180" : ""}>
                               <path d="M9 18l6-6-6-6" />
                             </svg>
                           </button>
@@ -380,5 +395,13 @@ export default function ExaminerClaimsPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function ExaminerClaimsPage() {
+  return (
+    <LangProvider>
+      <ExaminerClaimsPageInner />
+    </LangProvider>
   );
 }

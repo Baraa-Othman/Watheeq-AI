@@ -6,10 +6,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { useAuth } from "@/lib/auth-context";
 import { API_BASE_URL, apiFetchAuth } from "@/lib/apiClient";
+import { LangProvider, useLang } from "@/lib/lang-context";
+import LangToggle from "@/components/LangToggle";
 
 function MedicalReportDownloadButton({ claimId, patientName, user }: { claimId: string; patientName: string; user: unknown }) {
   const [loading, setDlLoading] = useState(false);
   const [error, setDlError] = useState("");
+  const { t } = useLang();
 
   const handleDownload = async () => {
     setDlLoading(true);
@@ -54,7 +57,7 @@ function MedicalReportDownloadButton({ claimId, patientName, user }: { claimId: 
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
         )}
-        {loading ? "Downloading..." : "Download Report"}
+        {loading ? t("downloadingBtn") : t("downloadReportBtn")}
       </button>
       {error && <p className="text-[11px] mt-1" style={{ color: "#dc2626" }}>{error}</p>}
     </div>
@@ -117,32 +120,20 @@ type AIPhase =
   | "done"
   | "failed";
 
-const PHASE_COPY: Record<AIPhase, string> = {
-  idle: "",
-  started: "Starting AI analysis…",
-  pdf_medical: "Reading the medical report…",
-  pdf_policy: "Reading the policy document…",
-  pdf_supporting: "Reading supporting documents…",
-  llm_analysis: "Analyzing the claim against the policy…",
-  llm_draft: "Drafting the response…",
-  done: "Done.",
-  failed: "Failed.",
+const STATUS_CONFIG: Record<ClaimStatus, { labelKey: string; bg: string; color: string; dot: string; descKey: string }> = {
+  submitted: { labelKey: "statusSubmitted", bg: "rgba(0,4,232,0.07)", color: "#0004E8", dot: "#0004E8", descKey: "descSubmitted" },
+  "under review": { labelKey: "statusUnderReview", bg: "rgba(234,179,8,0.10)", color: "#b45309", dot: "#eab308", descKey: "descUnderReview" },
+  approved: { labelKey: "statusApproved", bg: "rgba(22,163,74,0.08)", color: "#15803d", dot: "#16a34a", descKey: "descApproved" },
+  rejected: { labelKey: "statusRejected", bg: "rgba(220,38,38,0.08)", color: "#dc2626", dot: "#dc2626", descKey: "descRejected" },
+  cancelled: { labelKey: "statusCancelled", bg: "rgba(5,5,8,0.06)", color: "rgba(5,5,8,0.45)", dot: "rgba(5,5,8,0.3)", descKey: "descCancelled" },
 };
 
-const STATUS_CONFIG: Record<ClaimStatus, { label: string; bg: string; color: string; dot: string; desc: string }> = {
-  submitted: { label: "Submitted", bg: "rgba(0,4,232,0.07)", color: "#0004E8", dot: "#0004E8", desc: "This claim has been received and is awaiting review." },
-  "under review": { label: "Under Review", bg: "rgba(234,179,8,0.10)", color: "#b45309", dot: "#eab308", desc: "This claim is currently under your review." },
-  approved: { label: "Approved", bg: "rgba(22,163,74,0.08)", color: "#15803d", dot: "#16a34a", desc: "This claim has been approved. The claimant has been notified." },
-  rejected: { label: "Rejected", bg: "rgba(220,38,38,0.08)", color: "#dc2626", dot: "#dc2626", desc: "This claim has been rejected. The claimant has been notified." },
-  cancelled: { label: "Cancelled", bg: "rgba(5,5,8,0.06)", color: "rgba(5,5,8,0.45)", dot: "rgba(5,5,8,0.3)", desc: "This claim was cancelled by the claimant." },
-};
-
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value, dir }: { label: string; value: string; dir?: string }) {
   if (!value) return null;
   return (
     <div>
       <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(5,5,8,0.35)" }}>{label}</p>
-      <p className="text-[14px]" style={{ color: "#050508" }}>{value}</p>
+      <p className="text-[14px]" style={{ color: "#050508" }} dir={dir}>{value}</p>
     </div>
   );
 }
@@ -154,10 +145,11 @@ function formatDate(iso: string) {
   } catch { return iso; }
 }
 
-export default function ExaminerClaimDetailPage() {
+function ExaminerClaimDetailPageInner() {
   const { id } = useParams<{ id: string }>();
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { t, isRTL, lang } = useLang();
 
   const [claim, setClaim] = useState<Claim | null>(null);
   const [loading, setLoading] = useState(true);
@@ -176,6 +168,18 @@ export default function ExaminerClaimDetailPage() {
   const [draftStreaming, setDraftStreaming] = useState(false);
   const examinerEditedRef = useRef(false);
   const aiCompletedRef = useRef(false);
+
+  const PHASE_COPY: Record<AIPhase, string> = {
+    idle: "",
+    started: t("aiStartingAnalysis"),
+    pdf_medical: t("aiReadingMedical"),
+    pdf_policy: t("aiReadingPolicy"),
+    pdf_supporting: t("aiReadingSupporting"),
+    llm_analysis: t("aiAnalyzingClaim"),
+    llm_draft: t("aiDraftingResponse"),
+    done: t("aiDone"),
+    failed: t("aiFailed"),
+  };
 
   // Auth guard
   useEffect(() => {
@@ -208,9 +212,6 @@ export default function ExaminerClaimDetailPage() {
     if (claim.status !== "under review") return;
 
     // The live stream already produced a completed result for this claim.
-    // Don't re-run when refetchClaim() updates claim.aiDecision afterwards,
-    // otherwise we'd overwrite confidence/clauses/flags with the partial
-    // state we'd reconstruct from the claim doc.
     if (aiCompletedRef.current) return;
 
     // Already analyzed (persisted on the claim doc): hydrate and skip the stream
@@ -509,7 +510,7 @@ export default function ExaminerClaimDetailPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "#fafafd" }}>
+    <div className="min-h-screen" style={{ background: "#fafafd" }} dir={isRTL ? "rtl" : "ltr"}>
       {/* Header */}
       <header
         className="h-16 border-b flex items-center justify-between px-6 sticky top-0 z-30"
@@ -518,19 +519,22 @@ export default function ExaminerClaimDetailPage() {
         <div className="flex items-center gap-3">
           <Image src="/watheeq-logo.png" alt="Watheeq" width={110} height={30} />
           <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ background: "rgba(0,4,232,0.08)", color: "#0004E8" }}>
-            Claim Details
+            {t("claimDetailsSection")}
           </span>
         </div>
-        <button
-          onClick={() => router.push("/dashboard/examiner")}
-          className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg border transition-all hover:bg-gray-50"
-          style={{ borderColor: "#e2e2ee", color: "rgba(5,5,8,0.55)" }}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-          Dashboard
-        </button>
+        <div className="flex items-center gap-3">
+          <LangToggle compact />
+          <button
+            onClick={() => router.push("/dashboard/examiner")}
+            className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg border transition-all hover:bg-gray-50"
+            style={{ borderColor: "#e2e2ee", color: "rgba(5,5,8,0.55)" }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isRTL ? "rotate-180" : ""}>
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            {isRTL ? "لوحة التحكم" : "Dashboard"}
+          </button>
+        </div>
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-8">
@@ -552,8 +556,8 @@ export default function ExaminerClaimDetailPage() {
               className="inline-flex items-center gap-1.5 text-[13px] font-medium mb-4 hover:opacity-70"
               style={{ color: "rgba(5,5,8,0.45)" }}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
-              Claims Queue
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isRTL ? "rotate-180" : ""}><path d="M15 18l-6-6 6-6" /></svg>
+              {t("claimsQueue")}
             </button>
             <div className="px-4 py-3 rounded-xl text-sm" style={{ background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" }}>
               {error}
@@ -575,8 +579,8 @@ export default function ExaminerClaimDetailPage() {
                 className="inline-flex items-center gap-1.5 text-[13px] font-medium mb-5 hover:opacity-70 transition-opacity"
                 style={{ color: "rgba(5,5,8,0.45)" }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
-                Claims Queue
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isRTL ? "rotate-180" : ""}><path d="M15 18l-6-6 6-6" /></svg>
+                {t("claimsQueue")}
               </button>
 
               {/* Title + status */}
@@ -585,14 +589,17 @@ export default function ExaminerClaimDetailPage() {
                   <h1 className="text-[24px] font-bold tracking-tight" style={{ color: "#050508" }}>
                     {claim.patientFName} {claim.patientLName}
                   </h1>
-                  <p className="text-[12px] font-mono mt-1" style={{ color: "rgba(5,5,8,0.3)" }}>Ref: {claim.claimId}</p>
+                  <p className="text-[12px] mt-1" style={{ color: "rgba(5,5,8,0.3)" }}>
+                    <span>{t("refLabel")} </span>
+                    <span className="font-mono inline-block" dir="ltr">{claim.claimId}</span>
+                  </p>
                 </div>
                 <span
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold tracking-wide uppercase"
                   style={{ background: statusCfg.bg, color: statusCfg.color }}
                 >
                   <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: statusCfg.dot }} />
-                  {statusCfg.label}
+                  {t(statusCfg.labelKey)}
                 </span>
               </div>
 
@@ -602,30 +609,30 @@ export default function ExaminerClaimDetailPage() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={statusCfg.dot} strokeWidth="2" className="flex-shrink-0">
                   <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
                 </svg>
-                <p className="text-[13px]" style={{ color: statusCfg.color }}>{statusCfg.desc}</p>
+                <p className="text-[13px]" style={{ color: statusCfg.color }}>{t(statusCfg.descKey)}</p>
               </div>
 
               {/* Details card */}
               <div className="rounded-2xl border mb-4"
                 style={{ background: "#fff", borderColor: "#e2e2ee", boxShadow: "0 1px 3px rgba(5,5,8,0.04)" }}>
                 <div className="px-6 pt-5 pb-3 border-b" style={{ borderColor: "#f0f0f5" }}>
-                  <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "#0004E8" }}>Patient Information</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "#0004E8" }}>{t("patientInfoSection")}</p>
                 </div>
                 <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <Field label="First Name" value={claim.patientFName} />
-                  <Field label="Last Name" value={claim.patientLName} />
-                  <Field label="Date of Birth" value={claim.patientDOB} />
+                  <Field label={t("firstNameLabel")} value={claim.patientFName} />
+                  <Field label={t("lastNameLabel")} value={claim.patientLName} />
+                  <Field label={t("dobLabel")} value={claim.patientDOB} dir="ltr" />
                 </div>
                 <div className="px-6 pb-3 border-t border-b" style={{ borderColor: "#f0f0f5" }}>
-                  <p className="text-[11px] font-semibold uppercase tracking-widest pt-4" style={{ color: "#0004E8" }}>Claim Details</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-widest pt-4" style={{ color: "#0004E8" }}>{t("claimDetailsSection")}</p>
                 </div>
                 <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <Field label="Policy Plan" value={claim.policyName} />
-                  <Field label="Treatment Type" value={claim.treatmentType} />
-                  <Field label="Submitted On" value={formatDate(claim.submittingTime)} />
+                  <Field label={t("policyPlanLabel")} value={claim.policyName} />
+                  <Field label={t("treatmentTypeLabel")} value={claim.treatmentType} />
+                  <Field label={t("submittedOnLabel")} value={formatDate(claim.submittingTime)} dir="ltr" />
                   {claim.medicalReport && (
                     <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(5,5,8,0.35)" }}>Medical Report</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(5,5,8,0.35)" }}>{t("medReportLabel")}</p>
                       <MedicalReportDownloadButton
                         claimId={claim.claimId}
                         patientName={`${claim.patientFName}-${claim.patientLName}`}
@@ -635,10 +642,10 @@ export default function ExaminerClaimDetailPage() {
                   )}
                   {claim.supportingDocuments && (
                     <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(5,5,8,0.35)" }}>Supporting Documents</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(5,5,8,0.35)" }}>{t("supportDocsLabel")}</p>
                       <a href={claim.supportingDocuments} target="_blank" rel="noopener noreferrer"
                         className="text-[14px] font-medium underline underline-offset-2 transition-opacity hover:opacity-70" style={{ color: "#0004E8" }}>
-                        View Documents ↗
+                        {t("viewDocuments")}
                       </a>
                     </div>
                   )}
@@ -653,7 +660,7 @@ export default function ExaminerClaimDetailPage() {
                 >
                   <div className="px-6 pt-5 pb-3 border-b" style={{ borderColor: "#f0f0f5" }}>
                     <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "#0004E8" }}>
-                      Examiner Response
+                      {t("examinerResponseLabel")}
                     </p>
                   </div>
                   <div className="p-6">
@@ -670,9 +677,9 @@ export default function ExaminerClaimDetailPage() {
                 const isFailed = ai?.status === "failed" || aiPhase === "failed";
                 const isDone = ai?.status === "completed";
                 const decisionLabel = ai?.coverage_decision === "covered"
-                  ? "Covered"
+                  ? t("covered")
                   : ai?.coverage_decision === "not_covered"
-                  ? "Not Covered"
+                  ? t("notCovered")
                   : "—";
                 const decisionColor = ai?.coverage_decision === "covered"
                   ? "#15803d"
@@ -687,12 +694,12 @@ export default function ExaminerClaimDetailPage() {
 
                 return (
                   <div
-                    className="rounded-2xl border mb-5"
-                    style={{ background: "#fff", borderColor: "#e2e2ee", boxShadow: "0 1px 3px rgba(5,5,8,0.04)" }}
+                     className="rounded-2xl border mb-5"
+                     style={{ background: "#fff", borderColor: "#e2e2ee", boxShadow: "0 1px 3px rgba(5,5,8,0.04)" }}
                   >
                     <div className="px-6 pt-5 pb-3 border-b flex items-center justify-between gap-3" style={{ borderColor: "#f0f0f5" }}>
                       <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "#0004E8" }}>
-                        AI Analysis
+                        {t("aiAnalysisTitle")}
                       </p>
                       {isProcessing && (
                         <div className="inline-flex items-center gap-2 text-[11px] font-medium" style={{ color: "rgba(5,5,8,0.55)" }}>
@@ -700,13 +707,13 @@ export default function ExaminerClaimDetailPage() {
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                           </svg>
-                          Processing
+                          {isRTL ? "قيد المعالجة" : "Processing"}
                         </div>
                       )}
                       {isDone && (
                         <span className="inline-flex items-center gap-1 text-[11px] font-semibold" style={{ color: "#15803d" }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-                          Ready
+                          {isRTL ? "جاهز" : "Ready"}
                         </span>
                       )}
                     </div>
@@ -716,7 +723,7 @@ export default function ExaminerClaimDetailPage() {
                       {(isProcessing || aiPhase === "done") && aiPhase !== "idle" && (
                         <div className="mb-5 rounded-xl px-4 py-3" style={{ background: "rgba(0,4,232,0.04)", border: "1px solid rgba(0,4,232,0.12)" }}>
                           <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(0,4,232,0.7)" }}>
-                            Status
+                            {isRTL ? "الحالة" : "Status"}
                           </p>
                           <AnimatePresence mode="wait">
                             <motion.p
@@ -728,7 +735,7 @@ export default function ExaminerClaimDetailPage() {
                               className="text-[13px] font-medium"
                               style={{ color: "#050508" }}
                             >
-                              {PHASE_COPY[aiPhase] || "Working…"}
+                              {PHASE_COPY[aiPhase] || (isRTL ? "يجري العمل..." : "Working…")}
                             </motion.p>
                           </AnimatePresence>
                         </div>
@@ -738,13 +745,13 @@ export default function ExaminerClaimDetailPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
                         <div className="rounded-xl px-4 py-3" style={{ background: decisionBg, border: `1px solid ${decisionColor}25` }}>
                           <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(5,5,8,0.45)" }}>
-                            AI Decision
+                            {t("aiDecisionTitle")}
                           </p>
                           <p className="text-[15px] font-semibold" style={{ color: decisionColor }}>{decisionLabel}</p>
                         </div>
                         <div className="rounded-xl px-4 py-3" style={{ background: "#f9f9fc", border: "1px solid #e2e2ee" }}>
                           <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(5,5,8,0.45)" }}>
-                            Confidence
+                            {t("confidenceTitle")}
                           </p>
                           {typeof ai?.confidence_score === "number" ? (() => {
                             const pct = Math.round(ai.confidence_score * 100);
@@ -773,7 +780,7 @@ export default function ExaminerClaimDetailPage() {
                       {ai?.reasoning && (
                         <div className="mb-5">
                           <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(5,5,8,0.45)" }}>
-                            Reasoning
+                            {t("aiReasoningTitle")}
                           </p>
                           <p className="text-[13px] leading-relaxed" style={{ color: "#050508" }}>
                             {ai.reasoning}
@@ -785,7 +792,7 @@ export default function ExaminerClaimDetailPage() {
                       {ai?.applicable_clauses && ai.applicable_clauses.length > 0 && (
                         <div className="mb-5">
                           <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(5,5,8,0.45)" }}>
-                            Applicable Clauses
+                            {t("citedPolicyTitle")}
                           </p>
                           <ul className="space-y-2">
                             {ai.applicable_clauses.map((c, i) => (
@@ -808,7 +815,7 @@ export default function ExaminerClaimDetailPage() {
                       {ai?.flags && ai.flags.length > 0 && (
                         <div className="mb-5 rounded-xl px-4 py-3" style={{ background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.25)" }}>
                           <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "#b45309" }}>
-                            Flags
+                            {t("flagsManualReviewTitle")}
                           </p>
                           <ul className="text-[12px] list-disc pl-5" style={{ color: "#92400e" }}>
                             {ai.flags.map((f, i) => <li key={i}>{f}</li>)}
@@ -821,9 +828,9 @@ export default function ExaminerClaimDetailPage() {
                         <div className="mb-5 rounded-xl px-4 py-3 flex items-start justify-between gap-3"
                           style={{ background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.25)" }}>
                           <div>
-                            <p className="text-[12px] font-semibold" style={{ color: "#dc2626" }}>AI analysis failed</p>
+                            <p className="text-[12px] font-semibold" style={{ color: "#dc2626" }}>{isRTL ? "فشل تحليل الذكاء الاصطناعي" : "AI analysis failed"}</p>
                             <p className="text-[12px] mt-0.5" style={{ color: "rgba(5,5,8,0.6)" }}>
-                              {ai?.error_message || aiError || "Please retry."}
+                              {ai?.error_message || aiError || (isRTL ? "يرجى المحاولة مجدداً." : "Please retry.")}
                             </p>
                           </div>
                           <button
@@ -831,7 +838,7 @@ export default function ExaminerClaimDetailPage() {
                             className="text-[12px] font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap"
                             style={{ background: "#fff", border: "1px solid rgba(220,38,38,0.4)", color: "#dc2626" }}
                           >
-                            Retry
+                            {isRTL ? "إعادة المحاولة" : "Retry"}
                           </button>
                         </div>
                       )}
@@ -840,12 +847,12 @@ export default function ExaminerClaimDetailPage() {
                       <div>
                         <div className="flex items-center justify-between mb-2">
                           <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(5,5,8,0.45)" }}>
-                            Examiner Response
+                            {t("examinerResponseLabel")}
                           </p>
                           {draftStreaming && (
                             <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#0004E8" }}>
                               <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#0004E8" }} />
-                              Streaming
+                              {t("streamingTitle")}
                             </span>
                           )}
                         </div>
@@ -855,8 +862,8 @@ export default function ExaminerClaimDetailPage() {
                           rows={5}
                           placeholder={
                             isProcessing
-                              ? "The AI is drafting a response…"
-                              : "Enter response here..."
+                              ? (isRTL ? "يقوم الذكاء الاصطناعي بصياغة الرد..." : "The AI is drafting a response…")
+                              : t("enterResponsePlaceholder")
                           }
                           value={examinerResponse}
                           onChange={(e) => {
@@ -864,9 +871,18 @@ export default function ExaminerClaimDetailPage() {
                             setExaminerResponse(e.target.value);
                           }}
                         />
+                        {lang === "ar" && (
+                          <div className="mt-2 text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5"
+                            style={{ background: "rgba(245,158,11,0.1)", color: "#d97706", border: "1px solid rgba(245,158,11,0.2)" }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 animate-pulse">
+                              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                            </svg>
+                            <span>{t("englishOnlyHint")}</span>
+                          </div>
+                        )}
                         {streamingDraft && !examinerEditedRef.current && draftStreaming && (
                           <p className="text-[11px] mt-1.5" style={{ color: "rgba(5,5,8,0.45)" }}>
-                            You can edit this response before submitting your decision.
+                            {isRTL ? "يمكنك تعديل هذا الرد قبل تقديم قرارك." : "You can edit this response before submitting your decision."}
                           </p>
                         )}
                       </div>
@@ -880,15 +896,15 @@ export default function ExaminerClaimDetailPage() {
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                   className="rounded-2xl border p-5 mb-5"
                   style={{ background: "#fff", borderColor: "#e2e2ee", boxShadow: "0 1px 3px rgba(5,5,8,0.04)" }}>
-                  <p className="text-[13px] font-semibold mb-1" style={{ color: "#050508" }}>Make a Decision</p>
+                  <p className="text-[13px] font-semibold mb-1" style={{ color: "#050508" }}>{t("makeDecisionTitle")}</p>
                   <p className="text-[13px] mb-4" style={{ color: "rgba(5,5,8,0.5)" }}>
-                    Review the documents above, then approve or reject this claim. The claimant will be notified by email.
+                    {t("makeDecisionDesc")}
                   </p>
                   <div className="flex flex-col gap-3 mb-5">
                     {/* Approve List Item */}
                     <button
                       onClick={() => setSelectedDecision("approved")}
-                      className="flex items-center gap-3 p-4 rounded-xl border text-left transition-all"
+                      className="flex items-center gap-3 p-4 rounded-xl border text-start transition-all"
                       style={{
                         borderColor: selectedDecision === "approved" ? "#0004E8" : "#e2e2ee",
                         background: selectedDecision === "approved" ? "rgba(0,4,232,0.04)" : "#fff"
@@ -900,15 +916,15 @@ export default function ExaminerClaimDetailPage() {
                         {selectedDecision === "approved" && <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#0004E8" }} />}
                       </div>
                       <div>
-                        <p className="text-[14px] font-semibold" style={{ color: selectedDecision === "approved" ? "#0004E8" : "#050508" }}>Approve Claim</p>
-                        <p className="text-[12px]" style={{ color: "rgba(5,5,8,0.5)" }}>Mark the claim as approved.</p>
+                        <p className="text-[14px] font-semibold" style={{ color: selectedDecision === "approved" ? "#0004E8" : "#050508" }}>{t("approveClaimBtn")}</p>
+                        <p className="text-[12px]" style={{ color: "rgba(5,5,8,0.5)" }}>{t("approveClaimDesc")}</p>
                       </div>
                     </button>
 
                     {/* Reject List Item */}
                     <button
                       onClick={() => setSelectedDecision("rejected")}
-                      className="flex items-center gap-3 p-4 rounded-xl border text-left transition-all"
+                      className="flex items-center gap-3 p-4 rounded-xl border text-start transition-all"
                       style={{
                         borderColor: selectedDecision === "rejected" ? "#0004E8" : "#e2e2ee",
                         background: selectedDecision === "rejected" ? "rgba(0,4,232,0.04)" : "#fff"
@@ -920,8 +936,8 @@ export default function ExaminerClaimDetailPage() {
                         {selectedDecision === "rejected" && <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#0004E8" }} />}
                       </div>
                       <div>
-                        <p className="text-[14px] font-semibold" style={{ color: selectedDecision === "rejected" ? "#0004E8" : "#050508" }}>Reject Claim</p>
-                        <p className="text-[12px]" style={{ color: "rgba(5,5,8,0.5)" }}>Mark the claim as rejected.</p>
+                        <p className="text-[14px] font-semibold" style={{ color: selectedDecision === "rejected" ? "#0004E8" : "#050508" }}>{t("rejectClaimBtn")}</p>
+                        <p className="text-[12px]" style={{ color: "rgba(5,5,8,0.5)" }}>{t("rejectClaimDesc")}</p>
                       </div>
                     </button>
                   </div>
@@ -934,7 +950,7 @@ export default function ExaminerClaimDetailPage() {
                       className="w-full mt-2 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-[14px] font-semibold text-white transition-opacity hover:opacity-90"
                       style={{ background: "#0004E8" }}
                     >
-                      Submit Decision
+                      {t("submitDecisionBtn")}
                     </motion.button>
                   )}
                 </motion.div>
@@ -956,7 +972,7 @@ export default function ExaminerClaimDetailPage() {
                   </svg>
                   <p className="text-[13px] font-medium"
                     style={{ color: claim.status === "approved" ? "#15803d" : "#dc2626" }}>
-                    You {claim.status === "approved" ? "approved" : "rejected"} this claim. The claimant has been notified by email.
+                    {claim.status === "approved" ? t("youApprovedClaimMsg") : t("youRejectedClaimMsg")}
                   </p>
                 </div>
               )}
@@ -982,12 +998,10 @@ export default function ExaminerClaimDetailPage() {
               }
             </div>
             <h3 className="text-[17px] font-bold mb-2" style={{ color: "#050508" }}>
-              {pendingDecision === "approved" ? "Approve this claim?" : "Reject this claim?"}
+              {pendingDecision === "approved" ? t("approveThisClaimConfirm") : t("rejectThisClaimConfirm")}
             </h3>
             <p className="text-[13px] mb-6" style={{ color: "rgba(5,5,8,0.5)" }}>
-              {pendingDecision === "approved"
-                ? "The claim will be marked as approved and the claimant will be notified by email."
-                : "The claim will be marked as rejected and the claimant will be notified by email."}
+              {pendingDecision === "approved" ? t("approveClaimConfirmDesc") : t("rejectClaimConfirmDesc")}
             </p>
             {decideError && <p className="text-[12px] mb-3" style={{ color: "#dc2626" }}>{decideError}</p>}
             <div className="flex gap-3">
@@ -1000,21 +1014,29 @@ export default function ExaminerClaimDetailPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Submitting...
+                    {isRTL ? "جارٍ الإرسال..." : "Submitting..."}
                   </>
-                ) : pendingDecision === "approved" ? "Yes, Approve" : "Yes, Reject"}
+                ) : (pendingDecision === "approved" ? t("yesApprove") : t("yesReject"))}
               </button>
               <button onClick={() => { setPendingDecision(null); setDecideError(""); }} disabled={deciding}
                 className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold border transition-all disabled:opacity-50"
                 style={{ borderColor: "#e2e2ee", color: "rgba(5,5,8,0.6)" }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = "#f9f9fc")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
-                Cancel
+                {t("cancel")}
               </button>
             </div>
           </motion.div>
         </div>
       )}
     </div>
+  );
+}
+
+export default function ExaminerClaimDetailPage() {
+  return (
+    <LangProvider>
+      <ExaminerClaimDetailPageInner />
+    </LangProvider>
   );
 }

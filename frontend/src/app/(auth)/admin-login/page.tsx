@@ -5,10 +5,12 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
+import { useLang } from "@/lib/lang-context";
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const { signInAdmin } = useAuth();
+  const { t, isRTL } = useLang();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,13 +28,13 @@ export default function AdminLoginPage() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Login failed";
       if (msg.includes("invalid-credential") || msg.includes("wrong-password")) {
-        setError("Invalid email or password");
+        setError(isRTL ? "البريد الإلكتروني أو كلمة المرور غير صحيحة" : "Invalid email or password");
       } else if (msg.includes("user-not-found")) {
-        setError("No admin account with this email");
+        setError(isRTL ? "لا يوجد حساب مسؤول بهذا البريد الإلكتروني" : "No admin account with this email");
       } else if (msg.includes("too-many-requests")) {
-        setError("Too many attempts. Try again later.");
+        setError(isRTL ? "محاولات كثيرة جداً. حاول مرة أخرى لاحقاً." : "Too many attempts. Try again later.");
       } else if (msg.includes("permission") || msg.includes("insufficient")) {
-        setError("Database access denied. Deploy Firestore rules.");
+        setError(isRTL ? "تم رفض الوصول لقاعدة البيانات." : "Database access denied. Deploy Firestore rules.");
       } else {
         setError(msg);
       }
@@ -51,7 +53,9 @@ export default function AdminLoginPage() {
             </svg>
           </div>
           <div>
-            <h1 className="text-[20px] font-bold tracking-tight" style={{ color: "#050508" }}>Admin Portal</h1>
+            <h1 className="text-[20px] font-bold tracking-tight" style={{ color: "#050508", textAlign: isRTL ? "right" : "left" }}>
+              {t("adminSignInTitle")}
+            </h1>
           </div>
         </div>
 
@@ -80,37 +84,43 @@ export default function AdminLoginPage() {
           >
             <div className="px-5 pt-5 pb-4 space-y-3.5">
               <div>
-                <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)" }}>
-                  Email
+                <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)", textAlign: isRTL ? "right" : "left" }}>
+                  {t("emailAddressLabel")}
                 </label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@watheeq.ai"
+                  placeholder={t("emailPlaceholder")}
                   className="w-full px-3.5 py-2.5 rounded-lg border text-[14px] outline-none transition-all"
-                  style={{ borderColor: "#e8e8f0", color: "#050508" }}
+                  style={{ borderColor: "#e8e8f0", color: "#050508", textAlign: "left" }}
+                  dir="ltr"
                   autoFocus
                 />
               </div>
               <div>
-                <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)" }}>
-                  Password
+                <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)", textAlign: isRTL ? "right" : "left" }}>
+                  {t("passwordFieldLabel")}
                 </label>
                 <div className="relative">
                   <input
                     type={showPw ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter password"
-                    className="w-full px-3.5 py-2.5 pr-10 rounded-lg border text-[14px] outline-none transition-all"
-                    style={{ borderColor: "#e8e8f0", color: "#050508" }}
+                    placeholder={t("passwordPlaceholder")}
+                    className={`w-full px-3.5 py-2.5 rounded-lg border text-[14px] outline-none transition-all ${isRTL ? "pl-10" : "pr-10"}`}
+                    style={{ borderColor: "#e8e8f0", color: "#050508", textAlign: "left" }}
+                    dir="ltr"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPw(!showPw)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2"
-                    style={{ color: "rgba(5,5,8,0.3)" }}
+                    className="absolute top-1/2 -translate-y-1/2"
+                    style={{
+                      color: "rgba(5,5,8,0.3)",
+                      right: isRTL ? "auto" : "0.75rem",
+                      left: isRTL ? "0.75rem" : "auto",
+                    }}
                     tabIndex={-1}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -147,10 +157,10 @@ export default function AdminLoginPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Signing in...
+                    {t("signingIn")}
                   </>
                 ) : (
-                  "Sign in"
+                  t("signInBtn")
                 )}
               </button>
             </div>
@@ -159,7 +169,7 @@ export default function AdminLoginPage() {
 
         <div className="mt-5 flex items-center gap-3">
           <div className="flex-1 h-px" style={{ background: "#ebebf0" }} />
-          <span className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "rgba(5,5,8,0.25)" }}>or</span>
+          <span className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "rgba(5,5,8,0.25)" }}>{t("orLabel")}</span>
           <div className="flex-1 h-px" style={{ background: "#ebebf0" }} />
         </div>
 
@@ -170,7 +180,7 @@ export default function AdminLoginPage() {
           onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,4,232,0.03)")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
         >
-          Claimant / Examiner login
+          {t("backToClaimantLogin")}
         </Link>
       </motion.div>
     </div>

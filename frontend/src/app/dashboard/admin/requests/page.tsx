@@ -7,6 +7,8 @@ import { apiFetchAuth } from "@/lib/apiClient";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
+import { LangProvider, useLang } from "@/lib/lang-context";
+import LangToggle from "@/components/LangToggle";
 
 type Status = "pending" | "approved" | "rejected";
 
@@ -21,10 +23,10 @@ interface ExaminerRequest {
   reviewed_at: string | null;
 }
 
-const STATUS_STYLES: Record<Status, { bg: string; text: string; label: string }> = {
-  pending: { bg: "rgba(234,179,8,0.1)", text: "#b45309", label: "Pending" },
-  approved: { bg: "rgba(34,197,94,0.1)", text: "#15803d", label: "Approved" },
-  rejected: { bg: "rgba(239,68,68,0.1)", text: "#dc2626", label: "Rejected" },
+const STATUS_STYLES: Record<Status, { bg: string; text: string }> = {
+  pending: { bg: "rgba(234,179,8,0.1)", text: "#b45309" },
+  approved: { bg: "rgba(34,197,94,0.1)", text: "#15803d" },
+  rejected: { bg: "rgba(239,68,68,0.1)", text: "#dc2626" },
 };
 
 function formatDate(iso: string) {
@@ -32,8 +34,17 @@ function formatDate(iso: string) {
 }
 
 export default function ExaminerRequestsPage() {
+  return (
+    <LangProvider>
+      <ExaminerRequestsPageInner />
+    </LangProvider>
+  );
+}
+
+function ExaminerRequestsPageInner() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
+  const { t, isRTL } = useLang();
 
   const [requests, setRequests] = useState<ExaminerRequest[]>([]);
   const [filter, setFilter] = useState<"all" | Status>("pending");
@@ -72,16 +83,16 @@ export default function ExaminerRequestsPage() {
         setTimeout(() => fetchRequests(true), 800);
       } else {
         console.error("[ExaminerRequests] fetch error:", e);
-        showToast(e instanceof Error ? e.message : "Failed to load", false);
+        showToast(e instanceof Error ? e.message : t("toastActionFailed"), false);
         setFetching(false);
       }
     }
-  }, [user, filter]);
+  }, [user, filter, t]);
 
   useEffect(() => {
     if (!loading && user && profile?.role === "admin") {
-      const t = setTimeout(fetchRequests, 200);
-      return () => clearTimeout(t);
+      const tOut = setTimeout(fetchRequests, 200);
+      return () => clearTimeout(tOut);
     }
   }, [loading, user, profile, fetchRequests]);
 
@@ -105,9 +116,9 @@ export default function ExaminerRequestsPage() {
             : r
         )
       );
-      showToast(action === "approve" ? "Examiner approved and notified." : "Request rejected.", true);
+      showToast(action === "approve" ? t("toastApproveSuccess") : t("toastRejectSuccess"), true);
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Action failed", false);
+      showToast(e instanceof Error ? e.message : t("toastActionFailed"), false);
     } finally {
       setActionLoading(null);
     }
@@ -129,7 +140,7 @@ export default function ExaminerRequestsPage() {
   const pendingCount = requests.filter((r) => r.status === "pending").length;
 
   return (
-    <div className="min-h-screen" style={{ background: "#fafafd" }}>
+    <div className="min-h-screen" style={{ background: "#fafafd" }} dir={isRTL ? "rtl" : "ltr"}>
       {/* Toast */}
       <AnimatePresence>
         {toast && (
@@ -162,16 +173,19 @@ export default function ExaminerRequestsPage() {
             <Image src="/watheeq-logo.png" alt="Watheeq" width={110} height={30} />
           </Link>
           <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ background: "rgba(0,4,232,0.08)", color: "#0004E8" }}>
-            Admin Panel
+            {t("adminRole")}
           </span>
         </div>
-        <Link
-          href="/dashboard/admin"
-          className="text-sm font-medium px-4 py-2 rounded-lg border transition-all"
-          style={{ borderColor: "#e2e2ee", color: "rgba(5,5,8,0.55)" }}
-        >
-          ← Dashboard
-        </Link>
+        <div className="flex items-center gap-3">
+          <LangToggle />
+          <Link
+            href="/dashboard/admin"
+            className="text-sm font-medium px-4 py-2 rounded-lg border transition-all"
+            style={{ borderColor: "#e2e2ee", color: "rgba(5,5,8,0.55)" }}
+          >
+            {isRTL ? "لوحة التحكم ←" : "← Dashboard"}
+          </Link>
+        </div>
       </header>
 
       {/* Main */}
@@ -179,16 +193,17 @@ export default function ExaminerRequestsPage() {
         {/* Page header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: "#050508" }}>
-              Examiner Requests
+            <h1 className="text-2xl font-bold flex items-center gap-3" style={{ color: "#050508" }}>
+              <span>{t("examinerRequests")}</span>
               {pendingCount > 0 && filter !== "approved" && filter !== "rejected" && (
-                <span className="ml-3 px-2.5 py-0.5 rounded-full text-sm font-semibold" style={{ background: "rgba(234,179,8,0.15)", color: "#b45309" }}>
-                  {pendingCount} pending
+                <span className="px-2.5 py-0.5 rounded-full text-sm font-semibold inline-flex items-center gap-1" style={{ background: "rgba(234,179,8,0.15)", color: "#b45309" }}>
+                  <span>{pendingCount}</span>
+                  <span className="text-xs">{t("pendingLabelSimple").toLowerCase()}</span>
                 </span>
               )}
             </h1>
             <p className="text-sm mt-1" style={{ color: "rgba(5,5,8,0.45)" }}>
-              Review and manage Claims Examiner registration requests
+              {t("requestsCardDesc")}
             </p>
           </div>
           <button
@@ -196,10 +211,10 @@ export default function ExaminerRequestsPage() {
             className="flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-all"
             style={{ borderColor: "#e2e2ee", color: "rgba(5,5,8,0.55)" }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={isRTL ? "scale-x-[-1]" : ""}>
               <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
             </svg>
-            Refresh
+            {t("refresh")}
           </button>
         </div>
 
@@ -209,14 +224,20 @@ export default function ExaminerRequestsPage() {
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className="px-4 py-1.5 rounded-lg text-[13px] font-semibold transition-all capitalize"
+              className="px-4 py-1.5 rounded-lg text-[13px] font-semibold transition-all"
               style={
                 filter === f
                   ? { background: "#fff", color: "#050508", boxShadow: "0 1px 3px rgba(5,5,8,0.08)" }
                   : { color: "rgba(5,5,8,0.45)" }
               }
             >
-              {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+              {f === "all"
+                ? t("tabAll")
+                : f === "pending"
+                ? t("pendingLabelSimple")
+                : f === "approved"
+                ? t("approvedLabel")
+                : t("rejectedLabel")}
             </button>
           ))}
         </div>
@@ -238,9 +259,9 @@ export default function ExaminerRequestsPage() {
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
               </div>
-              <p className="font-semibold" style={{ color: "#050508" }}>No requests found</p>
+              <p className="font-semibold" style={{ color: "#050508" }}>{t("noRequestsFound")}</p>
               <p className="text-sm mt-1" style={{ color: "rgba(5,5,8,0.4)" }}>
-                {filter === "pending" ? "No pending requests at this time." : `No ${filter} requests.`}
+                {filter === "pending" ? t("noPendingRequestsDesc") : t("noRequestsMatchingFilter")}
               </p>
             </div>
           ) : (
@@ -248,10 +269,18 @@ export default function ExaminerRequestsPage() {
               <table className="w-full">
                 <thead>
                   <tr style={{ borderBottom: "1px solid #f0f0f5" }}>
-                    {["Full Name", "National ID / Iqama", "Email", "Phone", "Submitted", "Status", "Actions"].map((h) => (
+                    {[
+                      t("fullNameHeader"),
+                      t("nationalIdHeader"),
+                      t("emailHeader"),
+                      t("phoneHeader"),
+                      t("submittedHeader"),
+                      t("statusHeader"),
+                      t("actionsHeader")
+                    ].map((h, index) => (
                       <th
-                        key={h}
-                        className="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest"
+                        key={index}
+                        className="px-5 py-3.5 text-start text-[11px] font-semibold uppercase tracking-widest"
                         style={{ color: "rgba(5,5,8,0.38)", background: "#fafafd" }}
                       >
                         {h}
@@ -272,16 +301,16 @@ export default function ExaminerRequestsPage() {
                         <span className="text-sm font-semibold" style={{ color: "#050508" }}>{req.full_name}</span>
                       </td>
                       <td className="px-5 py-4">
-                        <span className="text-sm font-mono" style={{ color: "rgba(5,5,8,0.65)" }}>{req.national_id}</span>
+                        <span className="text-sm font-mono" style={{ color: "rgba(5,5,8,0.65)" }} dir="ltr">{req.national_id}</span>
                       </td>
                       <td className="px-5 py-4">
-                        <span className="text-sm" style={{ color: "rgba(5,5,8,0.65)" }}>{req.email}</span>
+                        <span className="text-sm" style={{ color: "rgba(5,5,8,0.65)" }} dir="ltr">{req.email}</span>
                       </td>
                       <td className="px-5 py-4">
-                        <span className="text-sm font-mono" style={{ color: "rgba(5,5,8,0.65)" }}>{req.phone}</span>
+                        <span className="text-sm font-mono" style={{ color: "rgba(5,5,8,0.65)" }} dir="ltr">{req.phone}</span>
                       </td>
                       <td className="px-5 py-4">
-                        <span className="text-sm" style={{ color: "rgba(5,5,8,0.5)" }}>{formatDate(req.created_at)}</span>
+                        <span className="text-sm font-mono" style={{ color: "rgba(5,5,8,0.5)" }} dir="ltr">{formatDate(req.created_at)}</span>
                       </td>
                       <td className="px-5 py-4">
                         <span
@@ -291,7 +320,11 @@ export default function ExaminerRequestsPage() {
                             color: STATUS_STYLES[req.status].text,
                           }}
                         >
-                          {STATUS_STYLES[req.status].label}
+                          {req.status === "pending"
+                            ? t("pendingLabelSimple")
+                            : req.status === "approved"
+                            ? t("approvedLabel")
+                            : t("rejectedLabel")}
                         </span>
                       </td>
                       <td className="px-5 py-4">
@@ -313,7 +346,7 @@ export default function ExaminerRequestsPage() {
                                   <polyline points="20 6 9 17 4 12" />
                                 </svg>
                               )}
-                              Approve
+                              {t("approveBtn")}
                             </button>
                             <button
                               onClick={() => handleAction(req.id, "reject")}
@@ -331,11 +364,11 @@ export default function ExaminerRequestsPage() {
                                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                                 </svg>
                               )}
-                              Reject
+                              {t("rejectBtn")}
                             </button>
                           </div>
                         ) : (
-                          <span className="text-xs" style={{ color: "rgba(5,5,8,0.3)" }}>
+                          <span className="text-xs font-mono" style={{ color: "rgba(5,5,8,0.3)" }} dir="ltr">
                             {req.reviewed_at ? formatDate(req.reviewed_at) : "—"}
                           </span>
                         )}
@@ -351,3 +384,4 @@ export default function ExaminerRequestsPage() {
     </div>
   );
 }
+

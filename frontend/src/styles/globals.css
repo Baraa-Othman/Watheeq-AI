@@ -99,3 +99,8 @@ body {
     font-size: 1.125rem;
   }
 }
+
+/* RTL Typography Overrides */
+[dir="rtl"], [dir="rtl"] * {
+  font-family: var(--font-ibm-plex-arabic), var(--font-tajawal), system-ui, sans-serif !important;
+}

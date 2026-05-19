@@ -8,6 +8,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
+import { LangProvider, useLang } from "@/lib/lang-context";
+import LangToggle from "@/components/LangToggle";
 
 interface Policy {
   id: string;
@@ -17,6 +19,7 @@ interface Policy {
 
 function DownloadButton({ policyId, policyName, user }: { policyId: string; policyName: string; user: any }) {
   const [loading, setLoading] = useState(false);
+  const { t } = useLang();
 
   const handleDownload = async () => {
     setLoading(true);
@@ -54,7 +57,7 @@ function DownloadButton({ policyId, policyName, user }: { policyId: string; poli
           <line x1="12" y1="15" x2="12" y2="3" />
         </svg>
       )}
-      Download
+      {t("downloadBtn")}
     </button>
   );
 }
@@ -63,6 +66,7 @@ function PreviewButton({ policyId, policyName, user }: { policyId: string; polic
   const [loading, setLoading] = useState(false);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const { t } = useLang();
 
   const handlePreview = async () => {
     setOpen(true);
@@ -100,7 +104,7 @@ function PreviewButton({ policyId, policyName, user }: { policyId: string; polic
             <circle cx="12" cy="12" r="3" />
           </svg>
         )}
-        Preview
+        {t("previewBtn")}
       </button>
       {open && (
         <PDFPreviewModal
@@ -124,8 +128,17 @@ function Spinner({ size = 6 }: { size?: number }) {
 }
 
 export default function AdminPoliciesPage() {
+  return (
+    <LangProvider>
+      <AdminPoliciesPageInner />
+    </LangProvider>
+  );
+}
+
+function AdminPoliciesPageInner() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
+  const { t, isRTL } = useLang();
 
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [fetching, setFetching] = useState(true);
@@ -163,11 +176,11 @@ export default function AdminPoliciesPage() {
       const data: Policy[] = await res.json();
       setPolicies(data);
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Failed to load", false);
+      showToast(e instanceof Error ? e.message : t("toastActionFailed"), false);
     } finally {
       setFetching(false);
     }
-  }, [user]);
+  }, [user, t]);
 
   useEffect(() => {
     if (!loading && user && profile?.role === "admin") {
@@ -180,11 +193,11 @@ export default function AdminPoliciesPage() {
     const f = e.target.files?.[0];
     if (!f) return;
     if (!f.name.toLowerCase().endsWith(".pdf")) {
-      setUploadError("Only PDF files are accepted.");
+      setUploadError(t("errorOnlyPDF"));
       return;
     }
     if (f.size > 10 * 1024 * 1024) {
-      setUploadError("File must be under 10 MB.");
+      setUploadError(t("errorFileUnder10MB"));
       return;
     }
     setFile(f);
@@ -203,11 +216,11 @@ export default function AdminPoliciesPage() {
       );
       const checkData = await checkRes.json();
       if (checkData.exists) {
-        setUploadError("A policy with this name already exists.");
+        setUploadError(t("errorPolicyNameExists"));
         return;
       }
     } catch {
-      setUploadError("Could not verify policy name. Please try again.");
+      setUploadError(t("errorVerifyName"));
       return;
     }
 
@@ -228,7 +241,7 @@ export default function AdminPoliciesPage() {
       if (!res.ok) throw new Error(data.detail || "Upload failed");
 
       setPolicies((prev) => [data, ...prev]);
-      showToast("Policy uploaded successfully.", true);
+      showToast(t("toastPolicyUploaded"), true);
       closeModal();
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : "Upload failed");
@@ -253,7 +266,7 @@ export default function AdminPoliciesPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Delete failed");
       setPolicies((prev) => prev.filter((p) => p.id !== deleteTarget.id));
-      showToast("Policy deleted.", true);
+      showToast(t("toastPolicyDeleted"), true);
       setDeleteTarget(null);
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Delete failed", false);
@@ -273,7 +286,7 @@ export default function AdminPoliciesPage() {
   if (profile.role !== "admin") return null;
 
   return (
-    <div className="min-h-screen" style={{ background: "#fafafd" }}>
+    <div className="min-h-screen" style={{ background: "#fafafd" }} dir={isRTL ? "rtl" : "ltr"}>
       {/* Toast */}
       <AnimatePresence>
         {toast && (
@@ -306,25 +319,28 @@ export default function AdminPoliciesPage() {
             <Image src="/watheeq-logo.png" alt="Watheeq" width={110} height={30} />
           </Link>
           <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ background: "rgba(0,4,232,0.08)", color: "#0004E8" }}>
-            Admin Panel
+            {t("adminRole")}
           </span>
         </div>
-        <Link
-          href="/dashboard/admin"
-          className="text-sm font-medium px-4 py-2 rounded-lg border transition-all"
-          style={{ borderColor: "#e2e2ee", color: "rgba(5,5,8,0.55)" }}
-        >
-          ← Dashboard
-        </Link>
+        <div className="flex items-center gap-3">
+          <LangToggle />
+          <Link
+            href="/dashboard/admin"
+            className="text-sm font-medium px-4 py-2 rounded-lg border transition-all"
+            style={{ borderColor: "#e2e2ee", color: "rgba(5,5,8,0.55)" }}
+          >
+            {isRTL ? "لوحة التحكم ←" : "← Dashboard"}
+          </Link>
+        </div>
       </header>
 
       {/* Main */}
       <main className="max-w-5xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: "#050508" }}>Policy Plans</h1>
+            <h1 className="text-2xl font-bold" style={{ color: "#050508" }}>{t("policyPlansTitle")}</h1>
             <p className="text-sm mt-1" style={{ color: "rgba(5,5,8,0.45)" }}>
-              Upload and manage insurance policy plan documents.
+              {t("policiesCardDesc")}
             </p>
           </div>
           <button
@@ -335,7 +351,7 @@ export default function AdminPoliciesPage() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            Add Policy
+            {t("addPolicyBtn")}
           </button>
         </div>
 
@@ -351,18 +367,18 @@ export default function AdminPoliciesPage() {
                   <polyline points="14 2 14 8 20 8" />
                 </svg>
               </div>
-              <p className="font-semibold" style={{ color: "#050508" }}>No policies yet</p>
-              <p className="text-sm mt-1" style={{ color: "rgba(5,5,8,0.4)" }}>Click "Add Policy" to upload the first one.</p>
+              <p className="font-semibold" style={{ color: "#050508" }}>{t("noPoliciesYet")}</p>
+              <p className="text-sm mt-1" style={{ color: "rgba(5,5,8,0.4)" }}>{t("clickAddPolicyDesc")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr style={{ borderBottom: "1px solid #f0f0f5" }}>
-                    {["Policy Name", "Actions"].map((h) => (
+                    {[t("policyNameHeader"), t("actionsHeader")].map((h, index) => (
                       <th
-                        key={h}
-                        className="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest"
+                        key={index}
+                        className="px-5 py-3.5 text-start text-[11px] font-semibold uppercase tracking-widest"
                         style={{ color: "rgba(5,5,8,0.38)", background: "#fafafd" }}
                       >
                         {h}
@@ -396,7 +412,7 @@ export default function AdminPoliciesPage() {
                               <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
                               <path d="M10 11v6" /><path d="M14 11v6" />
                             </svg>
-                            Delete
+                            {t("deleteBtn")}
                           </button>
                         </div>
                       </td>
@@ -428,7 +444,7 @@ export default function AdminPoliciesPage() {
               style={{ background: "#fff", boxShadow: "0 20px 60px rgba(5,5,8,0.15)" }}
             >
               <div className="flex items-center justify-between mb-5">
-                <h2 className="text-lg font-bold" style={{ color: "#050508" }}>Add Policy Plan</h2>
+                <h2 className="text-lg font-bold" style={{ color: "#050508" }}>{t("addPolicyModalTitle")}</h2>
                 <button onClick={closeModal} className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:bg-gray-100">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                     <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -438,12 +454,12 @@ export default function AdminPoliciesPage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1.5" style={{ color: "#050508" }}>Policy Name</label>
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: "#050508" }}>{t("policyNameLabelForm")}</label>
                   <input
                     type="text"
                     value={policyName}
                     onChange={(e) => setPolicyName(e.target.value)}
-                    placeholder="e.g. Comprehensive Health Plan 2025"
+                    placeholder={t("policyNamePlaceholder")}
                     required
                     className="w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition-all focus:border-blue-400"
                     style={{ borderColor: "#e2e2ee", color: "#050508" }}
@@ -451,14 +467,14 @@ export default function AdminPoliciesPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1.5" style={{ color: "#050508" }}>PDF File</label>
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: "#050508" }}>{t("pdfFileLabel")}</label>
                   <div
                     className="w-full rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-all hover:border-blue-300"
                     style={{ borderColor: file ? "#0004E8" : "#e2e2ee" }}
                     onClick={() => fileInputRef.current?.click()}
                   >
                     {file ? (
-                      <div className="flex items-center justify-center gap-2">
+                      <div className="flex items-center justify-center gap-2" dir="ltr">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0004E8" strokeWidth="2" strokeLinecap="round">
                           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                           <polyline points="14 2 14 8 20 8" />
@@ -472,8 +488,8 @@ export default function AdminPoliciesPage() {
                           <polyline points="17 8 12 3 7 8" />
                           <line x1="12" y1="3" x2="12" y2="15" />
                         </svg>
-                        <p className="text-sm" style={{ color: "rgba(5,5,8,0.4)" }}>Click to select a PDF</p>
-                        <p className="text-xs mt-1" style={{ color: "rgba(5,5,8,0.3)" }}>Max 10 MB</p>
+                        <p className="text-sm" style={{ color: "rgba(5,5,8,0.4)" }}>{t("clickSelectPDF")}</p>
+                        <p className="text-xs mt-1" style={{ color: "rgba(5,5,8,0.3)" }}>{t("max10MB")}</p>
                       </>
                     )}
                   </div>
@@ -497,7 +513,7 @@ export default function AdminPoliciesPage() {
                     className="flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all hover:bg-gray-50"
                     style={{ borderColor: "#e2e2ee", color: "rgba(5,5,8,0.6)" }}
                   >
-                    Cancel
+                    {t("cancel")}
                   </button>
                   <button
                     type="submit"
@@ -505,7 +521,7 @@ export default function AdminPoliciesPage() {
                     className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
                     style={{ background: "#0004E8" }}
                   >
-                    {uploading ? <><Spinner size={4} /> Uploading…</> : "Upload Policy"}
+                    {uploading ? <><Spinner size={4} /> {t("uploadingSpinner")}</> : t("uploadPolicyBtn")}
                   </button>
                 </div>
               </form>
@@ -538,9 +554,9 @@ export default function AdminPoliciesPage() {
                   <path d="M10 11v6" /><path d="M14 11v6" />
                 </svg>
               </div>
-              <h2 className="text-base font-bold text-center mb-1" style={{ color: "#050508" }}>Delete Policy</h2>
+              <h2 className="text-base font-bold text-center mb-1" style={{ color: "#050508" }}>{t("deletePolicyModalTitle")}</h2>
               <p className="text-sm text-center mb-5" style={{ color: "rgba(5,5,8,0.5)" }}>
-                Are you sure you want to delete <strong style={{ color: "#050508" }}>{deleteTarget.policy_name}</strong>? This action cannot be undone.
+                {t("deletePolicyConfirmDesc")} <strong style={{ color: "#050508" }}>{deleteTarget.policy_name}</strong>?
               </p>
               <div className="flex gap-3">
                 <button
@@ -549,7 +565,7 @@ export default function AdminPoliciesPage() {
                   className="flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all hover:bg-gray-50 disabled:opacity-50"
                   style={{ borderColor: "#e2e2ee", color: "rgba(5,5,8,0.6)" }}
                 >
-                  Cancel
+                  {t("cancel")}
                 </button>
                 <button
                   onClick={handleDelete}
@@ -557,7 +573,7 @@ export default function AdminPoliciesPage() {
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
                   style={{ background: "#dc2626" }}
                 >
-                  {deleting ? <><Spinner size={4} /> Deleting…</> : "Delete"}
+                  {deleting ? <><Spinner size={4} /> {t("deleteBtn")}…</> : t("deleteBtn")}
                 </button>
               </div>
             </motion.div>

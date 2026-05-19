@@ -8,6 +8,9 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 
+import { LangProvider, useLang } from "@/lib/lang-context";
+import LangToggle from "@/components/LangToggle";
+
 type Status = "submitted" | "under review" | "approved" | "rejected" | "cancelled";
 
 interface ClaimsStats {
@@ -26,8 +29,17 @@ const STATUS_STYLES: Record<Status, { bar: string; bg: string; text: string; lab
 };
 
 export default function AdminStatisticsPage() {
+  return (
+    <LangProvider>
+      <AdminStatisticsPageInner />
+    </LangProvider>
+  );
+}
+
+function AdminStatisticsPageInner() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
+  const { t, isRTL } = useLang();
 
   const [stats, setStats] = useState<ClaimsStats | null>(null);
   const [fetching, setFetching] = useState(true);
@@ -85,8 +97,17 @@ export default function AdminStatisticsPage() {
 
   const total = stats?.total ?? 0;
 
+  const getStatusLabel = (s: Status) => {
+    if (s === "submitted") return t("statusSubmitted");
+    if (s === "under review") return t("statusUnderReview");
+    if (s === "approved") return t("statusApproved");
+    if (s === "rejected") return t("statusRejected");
+    if (s === "cancelled") return t("statusCancelled");
+    return s;
+  };
+
   return (
-    <div className="min-h-screen" style={{ background: "#fafafd" }}>
+    <div className="min-h-screen flex flex-col" dir={isRTL ? "rtl" : "ltr"} style={{ background: "#fafafd" }}>
       {/* Header */}
       <header className="h-16 border-b flex items-center justify-between px-6" style={{ borderColor: "#e2e2ee", background: "#fff" }}>
         <div className="flex items-center gap-3">
@@ -94,38 +115,43 @@ export default function AdminStatisticsPage() {
             <Image src="/watheeq-logo.png" alt="Watheeq" width={110} height={30} />
           </Link>
           <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ background: "rgba(0,4,232,0.08)", color: "#0004E8" }}>
-            Admin Panel
+            {t("adminRole")}
           </span>
         </div>
-        <Link
-          href="/dashboard/admin"
-          className="text-sm font-medium px-4 py-2 rounded-lg border transition-all"
-          style={{ borderColor: "#e2e2ee", color: "rgba(5,5,8,0.55)" }}
-        >
-          ← Dashboard
-        </Link>
+        <div className="flex items-center gap-3">
+          <LangToggle compact />
+          <Link
+            href="/dashboard/admin"
+            className="text-sm font-medium px-4 py-2 rounded-lg border transition-all inline-flex items-center gap-1.5"
+            style={{ borderColor: "#e2e2ee", color: "rgba(5,5,8,0.55)" }}
+          >
+            {isRTL ? "لوحة التحكم ←" : "← Dashboard"}
+          </Link>
+        </div>
       </header>
 
       {/* Main */}
-      <main className="max-w-6xl mx-auto px-6 py-10">
+      <main className="max-w-6xl w-full mx-auto px-6 py-10 flex-1">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
           {/* Page header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
             <div>
-              <h1 className="text-2xl font-bold" style={{ color: "#050508" }}>Claims Statistics</h1>
+              <h1 className="text-2xl font-bold" style={{ color: "#050508" }}>
+                {t("claimsStatisticsHeader")}
+              </h1>
               <p className="text-sm mt-1" style={{ color: "rgba(5,5,8,0.45)" }}>
-                Overview of claim processing activity across all statuses
+                {t("claimsStatsSub")}
               </p>
             </div>
             <button
               onClick={() => fetchStats()}
               className="flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-all"
-              style={{ borderColor: "#e2e2ee", color: "rgba(5,5,8,0.55)" }}
+              style={{ borderColor: "#e2e2ee", color: "rgba(5,5,8,0.55)", background: "#fff" }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={isRTL ? "rotate-180" : ""}>
                 <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
               </svg>
-              Refresh
+              {t("refresh")}
             </button>
           </div>
 
@@ -149,9 +175,9 @@ export default function AdminStatisticsPage() {
                   style={{ borderColor: "#e2e2ee", background: "#fff", boxShadow: "0 1px 3px rgba(5,5,8,0.05)" }}
                 >
                   <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(5,5,8,0.4)" }}>
-                    Total Claims
+                    {t("statsTotalClaims")}
                   </p>
-                  <p className="text-3xl font-bold" style={{ color: "#050508" }}>{total}</p>
+                  <p className="text-3xl font-bold" style={{ color: "#050508" }} dir="ltr">{total}</p>
                 </div>
                 {STATUS_ORDER.map((s) => {
                   const count = stats.byStatus?.[s] ?? 0;
@@ -166,11 +192,11 @@ export default function AdminStatisticsPage() {
                         className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mb-2"
                         style={{ background: style.bg, color: style.text }}
                       >
-                        {style.label}
+                        {getStatusLabel(s)}
                       </span>
-                      <p className="text-3xl font-bold" style={{ color: "#050508" }}>{count}</p>
+                      <p className="text-3xl font-bold" style={{ color: "#050508" }} dir="ltr">{count}</p>
                       <p className="text-xs mt-1" style={{ color: "rgba(5,5,8,0.4)" }}>
-                        {total > 0 ? `${Math.round((count / total) * 100)}%` : "0%"} of total
+                        <span dir="ltr" className="font-semibold">{total > 0 ? `${Math.round((count / total) * 100)}%` : "0%"}</span> {t("statsOfTotal")}
                       </p>
                     </div>
                   );
@@ -182,9 +208,9 @@ export default function AdminStatisticsPage() {
                 className="rounded-2xl border p-6"
                 style={{ borderColor: "#e2e2ee", background: "#fff", boxShadow: "0 1px 3px rgba(5,5,8,0.05)" }}
               >
-                <h3 className="text-base font-bold mb-1" style={{ color: "#050508" }}>Distribution by status</h3>
+                <h3 className="text-base font-bold mb-1" style={{ color: "#050508" }}>{t("distributionByStatus")}</h3>
                 <p className="text-xs mb-6" style={{ color: "rgba(5,5,8,0.45)" }}>
-                  Share of claims at each stage of the lifecycle
+                  {t("shareOfClaimsDesc")}
                 </p>
 
                 <ClaimsDoughnut stats={stats} />
@@ -198,6 +224,7 @@ export default function AdminStatisticsPage() {
 }
 
 function ClaimsDoughnut({ stats }: { stats: ClaimsStats }) {
+  const { t, isRTL } = useLang();
   const total = STATUS_ORDER.reduce((sum, s) => sum + (stats.byStatus?.[s] ?? 0), 0);
   const [hovered, setHovered] = useState<Status | null>(null);
 
@@ -215,10 +242,19 @@ function ClaimsDoughnut({ stats }: { stats: ClaimsStats }) {
     return slice;
   });
 
+  const getStatusLabel = (s: Status) => {
+    if (s === "submitted") return t("statusSubmitted");
+    if (s === "under review") return t("statusUnderReview");
+    if (s === "approved") return t("statusApproved");
+    if (s === "rejected") return t("statusRejected");
+    if (s === "cancelled") return t("statusCancelled");
+    return s;
+  };
+
   if (total === 0) {
     return (
       <div className="flex items-center justify-center h-[220px] text-sm italic" style={{ color: "rgba(5,5,8,0.4)" }}>
-        No claims submitted yet.
+        {t("noClaimsSubmittedYet")}
       </div>
     );
   }
@@ -227,7 +263,7 @@ function ClaimsDoughnut({ stats }: { stats: ClaimsStats }) {
   const activePct = activeSlice ? Math.round(activeSlice.fraction * 100) : 0;
 
   return (
-    <div className="flex flex-col md:flex-row items-center gap-8">
+    <div className={`flex flex-col md:flex-row items-center gap-8 ${isRTL ? "md:flex-row-reverse" : ""}`}>
       <div className="relative flex-shrink-0">
         <svg width="220" height="220" viewBox="0 0 220 220">
           <circle cx="110" cy="110" r={radius} fill="none" stroke="#f0f0f5" strokeWidth={stroke} />
@@ -249,15 +285,15 @@ function ClaimsDoughnut({ stats }: { stats: ClaimsStats }) {
                   strokeDasharray={`${sl.dash} ${circumference - sl.dash}`}
                   initial={{ strokeDashoffset: -sl.offset + circumference }}
                   animate={{
-                    strokeDashoffset: -sl.offset,
-                    opacity: isDimmed ? 0.3 : 1,
+                     strokeDashoffset: -sl.offset,
+                     opacity: isDimmed ? 0.3 : 1,
                   }}
                   transition={{ duration: 0.7, ease: "easeOut" }}
                   style={{ cursor: "pointer", transition: "stroke-width 0.15s ease, opacity 0.15s ease" }}
                   onMouseEnter={() => setHovered(sl.status)}
                   onMouseLeave={() => setHovered(null)}
                 >
-                  <title>{`${STATUS_STYLES[sl.status].label}: ${sl.count} (${Math.round(sl.fraction * 100)}%)`}</title>
+                  <title>{`${getStatusLabel(sl.status)}: ${sl.count} (${Math.round(sl.fraction * 100)}%)`}</title>
                 </motion.circle>
               );
             })}
@@ -266,21 +302,21 @@ function ClaimsDoughnut({ stats }: { stats: ClaimsStats }) {
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-4 text-center">
           {activeSlice ? (
             <>
-              <span className="text-3xl font-bold tabular-nums" style={{ color: STATUS_STYLES[activeSlice.status].bar }}>
+              <span className="text-3xl font-bold tabular-nums" style={{ color: STATUS_STYLES[activeSlice.status].bar }} dir="ltr">
                 {activeSlice.count}
               </span>
               <span className="text-[11px] uppercase tracking-widest font-semibold mt-0.5" style={{ color: "rgba(5,5,8,0.6)" }}>
-                {STATUS_STYLES[activeSlice.status].label}
+                {getStatusLabel(activeSlice.status)}
               </span>
               <span className="text-[11px] font-semibold" style={{ color: "rgba(5,5,8,0.4)" }}>
-                {activePct}% of total
+                {isRTL ? `%${activePct} من الإجمالي` : `${activePct}% of total`}
               </span>
             </>
           ) : (
             <>
-              <span className="text-3xl font-bold" style={{ color: "#050508" }}>{total}</span>
+              <span className="text-3xl font-bold" style={{ color: "#050508" }} dir="ltr">{total}</span>
               <span className="text-[11px] uppercase tracking-widest font-semibold" style={{ color: "rgba(5,5,8,0.4)" }}>
-                Total
+                {isRTL ? "الإجمالي" : "Total"}
               </span>
             </>
           )}
@@ -309,10 +345,10 @@ function ClaimsDoughnut({ stats }: { stats: ClaimsStats }) {
                   style={{ background: STATUS_STYLES[sl.status].bar }}
                 />
                 <span className="text-sm font-medium" style={{ color: "rgba(5,5,8,0.75)" }}>
-                  {STATUS_STYLES[sl.status].label}
+                  {getStatusLabel(sl.status)}
                 </span>
               </span>
-              <span className="text-sm font-bold tabular-nums" style={{ color: "#050508" }}>
+              <span className="text-sm font-bold tabular-nums" style={{ color: "#050508" }} dir="ltr">
                 {sl.count} <span className="font-normal" style={{ color: "rgba(5,5,8,0.4)" }}>({pct}%)</span>
               </span>
             </div>
