@@ -7,6 +7,7 @@ from firebase_admin import auth as firebase_auth
 from google.cloud.firestore_v1 import transaction as fs_transaction
 from app.services.firestore_client import get_db
 from app.services.claims_service import notify_claim_decision
+from app.services import audit_service
 from datetime import datetime, timezone
 from app.services.ai import analysis_service, store as ai_store
 from app.models.ai_analysis import AnalysisTriggerRequest
@@ -45,9 +46,10 @@ async def require_examiner(authorization: str = Header(..., alias="Authorization
 
 def _serialize_claim(data: dict) -> dict:
     """Convert Firestore Timestamps to ISO strings for JSON serialisation."""
-    st = data.get("submittingTime")
-    if st and hasattr(st, "isoformat"):
-        data["submittingTime"] = st.isoformat()
+    for field in ("submittingTime", "pickedTime", "closedTime"):
+        v = data.get(field)
+        if v and hasattr(v, "isoformat"):
+            data[field] = v.isoformat()
     return data
 
 
@@ -168,6 +170,7 @@ def pick_claim(
         txn.update(ref, {
             "status": "under review",
             "examinerID": uid,
+            "pickedTime": datetime.now(timezone.utc),
             "aiDecision": "",
             "aiMessage": "",
             "aiDraft": "",
@@ -177,6 +180,15 @@ def pick_claim(
     txn = db.transaction()
     _do_pick(txn)
     print(f"[Examiner] Picked claim={claim_id} by examiner={uid}", file=sys.stderr)
+
+    audit_service.record_action(
+        action="claim_picked",
+        actor_uid=uid,
+        actor_role=examiner.get("role", "examiner"),
+        actor_name=examiner.get("fullName", ""),
+        target_type="claim",
+        target_id=claim_id,
+    )
 
     analysis_id = str(uuid4())
     ai_store.save_analysis(claim_id, {
@@ -246,9 +258,20 @@ def decide_claim(claim_id: str, body: DecideRequest, examiner: dict = Depends(re
 
     ref.update({
         "status": body.decision,
-        "examinerResponse": final_response
+        "examinerResponse": final_response,
+        "closedTime": datetime.now(timezone.utc),
     })
     print(f"[Examiner] Decision '{body.decision}' for claim={claim_id} by examiner={uid}", file=sys.stderr)
+
+    audit_service.record_action(
+        action=f"claim_{body.decision}",
+        actor_uid=uid,
+        actor_role=examiner.get("role", "examiner"),
+        actor_name=examiner.get("fullName", ""),
+        target_type="claim",
+        target_id=claim_id,
+        metadata={"examinerResponse": final_response},
+    )
 
     # Send email notification to claimant (fire-and-forget — don't fail the request if email fails)
     try:

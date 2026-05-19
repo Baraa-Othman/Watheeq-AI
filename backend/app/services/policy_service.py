@@ -3,6 +3,7 @@ import uuid
 
 from fastapi import HTTPException
 from app.services.firestore_client import get_db
+from app.services import audit_service
 from app.utils import cloudinary_client
 
 POLICIES_COLLECTION = "policies"
@@ -76,10 +77,21 @@ def create_policy(
     }
     doc_ref.set(data)
 
+    actor_role, actor_name = audit_service._resolve_actor(uploaded_by)
+    audit_service.record_action(
+        action="policy_uploaded",
+        actor_uid=uploaded_by,
+        actor_role=actor_role or "admin",
+        actor_name=actor_name,
+        target_type="policy",
+        target_id=doc_ref.id,
+        metadata={"policy_name": policy_name, "file_size": file_size},
+    )
+
     return {"id": doc_ref.id, **data}
 
 
-def delete_policy(policy_id: str) -> dict:
+def delete_policy(policy_id: str, deleted_by: str = "") -> dict:
     db = get_db()
     doc_ref = db.collection(POLICIES_COLLECTION).document(policy_id)
     snap = doc_ref.get()
@@ -98,4 +110,15 @@ def delete_policy(policy_id: str) -> dict:
         )
 
     doc_ref.delete()
+
+    actor_role, actor_name = audit_service._resolve_actor(deleted_by)
+    audit_service.record_action(
+        action="policy_deleted",
+        actor_uid=deleted_by,
+        actor_role=actor_role or "admin",
+        actor_name=actor_name,
+        target_type="policy",
+        target_id=policy_id,
+        metadata={"policy_name": data.get("policy_name", "")},
+    )
     return {"message": "Policy deleted successfully"}

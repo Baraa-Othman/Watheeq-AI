@@ -93,7 +93,7 @@ async def create_policy(
 
 @admin_router.delete("/policies/{policy_id}", summary="Delete a policy plan")
 def delete_policy(policy_id: str, admin: dict = Depends(require_admin)):
-    return policy_service.delete_policy(policy_id)
+    return policy_service.delete_policy(policy_id, deleted_by=admin["uid"])
 
 
 # ── Public endpoints (any authenticated user) ─────────────────────────────────

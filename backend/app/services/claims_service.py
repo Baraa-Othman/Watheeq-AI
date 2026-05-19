@@ -2,6 +2,7 @@ import sys
 from datetime import datetime, timezone
 from fastapi import HTTPException
 from app.services.firestore_client import get_db
+from app.services import audit_service
 from app.models.claim import SubmitClaimRequest
 from app.utils.email import send_claim_approved, send_claim_rejected
 
@@ -29,6 +30,20 @@ def submit_claim(claimant_uid: str, data: SubmitClaimRequest) -> dict:
     }
     doc_ref.set(claim_data)
     print(f"[Claims] Submitted claim={doc_ref.id} by claimant={claimant_uid}", file=sys.stderr)
+
+    actor_role, actor_name = audit_service._resolve_actor(claimant_uid)
+    audit_service.record_action(
+        action="claim_submitted",
+        actor_uid=claimant_uid,
+        actor_role=actor_role or "claimant",
+        actor_name=actor_name,
+        target_type="claim",
+        target_id=doc_ref.id,
+        metadata={
+            "policyName": data.policyName,
+            "treatmentType": data.treatmentType,
+        },
+    )
     return {"claimId": doc_ref.id}
 
 
@@ -43,10 +58,11 @@ def list_claims(claimant_uid: str) -> list[dict]:
     results = []
     for d in docs:
         data = d.to_dict()
-        # Convert Firestore Timestamp to ISO string for JSON serialisation
-        st = data.get("submittingTime")
-        if st and hasattr(st, "isoformat"):
-            data["submittingTime"] = st.isoformat()
+        # Convert Firestore Timestamps to ISO strings for JSON serialisation
+        for field in ("submittingTime", "pickedTime", "closedTime"):
+            v = data.get(field)
+            if v and hasattr(v, "isoformat"):
+                data[field] = v.isoformat()
         results.append(data)
 
     # Sort in Python — avoids needing a composite Firestore index
@@ -65,9 +81,10 @@ def get_claim(claim_id: str, claimant_uid: str) -> dict:
     if data.get("claimantID") != claimant_uid:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    st = data.get("submittingTime")
-    if st and hasattr(st, "isoformat"):
-        data["submittingTime"] = st.isoformat()
+    for field in ("submittingTime", "pickedTime", "closedTime"):
+        v = data.get(field)
+        if v and hasattr(v, "isoformat"):
+            data[field] = v.isoformat()
 
     return data
 
@@ -93,6 +110,16 @@ def cancel_claim(claim_id: str, claimant_uid: str) -> dict:
 
     ref.update({"status": "cancelled"})
     print(f"[Claims] Cancelled claim={claim_id} by claimant={claimant_uid}", file=sys.stderr)
+
+    actor_role, actor_name = audit_service._resolve_actor(claimant_uid)
+    audit_service.record_action(
+        action="claim_cancelled",
+        actor_uid=claimant_uid,
+        actor_role=actor_role or "claimant",
+        actor_name=actor_name,
+        target_type="claim",
+        target_id=claim_id,
+    )
     return {"success": True}
 
 

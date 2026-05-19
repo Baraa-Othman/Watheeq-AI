@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from fastapi import HTTPException
 from firebase_admin import auth as firebase_auth
 from app.services.firestore_client import get_db
+from app.services import audit_service
 from app.core.config import settings
 
 
@@ -244,6 +245,16 @@ async def signup(
     db.collection("users").document(uid).set(profile)
     print(f"[Firestore] created user uid={uid} role={role}", file=sys.stderr)
 
+    audit_service.record_action(
+        action="user_signup",
+        actor_uid=uid,
+        actor_role=role,
+        actor_name=full_name,
+        target_type="user",
+        target_id=uid,
+        metadata={"email": email or "", "phone": phone},
+    )
+
     if role == "claimant":
         raw_token = firebase_auth.create_custom_token(uid, {"role": "claimant"})
         token_str = raw_token.decode() if isinstance(raw_token, bytes) else raw_token
@@ -283,6 +294,16 @@ async def register_examiner_request(
     }
     doc_ref.set(request_data)
     print(f"[Firestore] examiner_request created id={doc_ref.id} phone={phone!r}", file=sys.stderr)
+
+    audit_service.record_action(
+        action="examiner_request_submitted",
+        actor_uid="",
+        actor_role="examiner",
+        actor_name=full_name,
+        target_type="examiner_request",
+        target_id=doc_ref.id,
+        metadata={"email": email, "phone": phone},
+    )
 
     return {
         "success": True,
