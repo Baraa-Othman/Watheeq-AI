@@ -6,13 +6,11 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { motion } from "framer-motion";
-import { LangProvider, useLang } from "@/lib/lang-context";
-import LangToggle from "@/components/LangToggle";
 
 const navLinks = [
   {
     href: "/examiner/claims",
-    labelKey: "claimsQueue",
+    label: "Claims Queue",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
         <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
@@ -23,9 +21,8 @@ const navLinks = [
   },
 ];
 
-function ExaminerLayoutInner({ children }: { children: React.ReactNode }) {
+export default function ExaminerLayout({ children }: { children: React.ReactNode }) {
   const { profile, loading, signOut } = useAuth();
-  const { t, isRTL } = useLang();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -47,30 +44,25 @@ function ExaminerLayoutInner({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div
-      className="min-h-screen flex flex-col lg:flex-row"
-      style={{ background: "#fafafd" }}
-      dir={isRTL ? "rtl" : "ltr"}
-    >
+    <div className="min-h-screen flex flex-col lg:flex-row" style={{ background: "#fafafd" }}>
       {/* ── Sidebar (desktop) ── */}
       <aside
-        className={`hidden lg:flex flex-col w-64 flex-shrink-0 min-h-screen ${isRTL ? "border-l" : "border-r"}`}
+        className="hidden lg:flex flex-col w-64 flex-shrink-0 min-h-screen border-r"
         style={{ background: "#fff", borderColor: "#e2e2ee" }}
       >
-        {/* Logo + language toggle row */}
-        <div className="px-5 pt-7 pb-5 border-b flex items-center justify-between w-full gap-2" style={{ borderColor: "#e2e2ee" }}>
+        {/* Logo */}
+        <div className="px-6 pt-7 pb-8 border-b" style={{ borderColor: "#e2e2ee" }}>
           <Link href="/examiner/claims" className="inline-flex items-center">
-            <Image src="/watheeq-logo.png" alt="Watheeq" width={110} height={29} className="shrink-0" />
+            <Image src="/watheeq-logo.png" alt="Watheeq" width={120} height={32} />
           </Link>
-          <LangToggle compact />
         </div>
 
         {/* User greeting */}
         <div className="px-6 py-4 border-b" style={{ borderColor: "#e2e2ee" }}>
           <p className="text-[11px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: "rgba(5,5,8,0.35)" }}>
-            {t("examinerRole")}
+            Claims Examiner
           </p>
-          <p className="text-[14px] font-medium truncate" dir="ltr" style={{ color: "#050508" }}>
+          <p className="text-[14px] font-medium truncate" style={{ color: "#050508" }}>
             {profile.fullName}
           </p>
         </div>
@@ -90,10 +82,10 @@ function ExaminerLayoutInner({ children }: { children: React.ReactNode }) {
                   border: "1px solid transparent",
                 }}
               >
-                <span style={{ color: isActive ? "#0004E8" : "rgba(5,5,8,0.38)", flexShrink: 0 }}>
+                <span style={{ color: isActive ? "#0004E8" : "rgba(5,5,8,0.38)" }}>
                   {link.icon}
                 </span>
-                {t(link.labelKey)}
+                {link.label}
               </Link>
             );
           })}
@@ -103,17 +95,17 @@ function ExaminerLayoutInner({ children }: { children: React.ReactNode }) {
         <div className="px-3 pb-5 border-t pt-3" style={{ borderColor: "#e2e2ee" }}>
           <button
             onClick={signOut}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-medium w-full transition-all"
-            style={{ color: "rgba(5,5,8,0.45)", textAlign: isRTL ? "right" : "left" }}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-medium w-full text-left transition-all"
+            style={{ color: "rgba(5,5,8,0.45)" }}
             onMouseEnter={(e) => (e.currentTarget.style.background = "#f9f9fc")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ flexShrink: 0 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
               <polyline points="16 17 21 12 16 7" />
               <line x1="21" y1="12" x2="9" y2="12" />
             </svg>
-            {t("signOut")}
+            Sign Out
           </button>
         </div>
       </aside>
@@ -128,16 +120,13 @@ function ExaminerLayoutInner({ children }: { children: React.ReactNode }) {
           <Link href="/examiner/claims">
             <Image src="/watheeq-logo.png" alt="Watheeq" width={110} height={30} />
           </Link>
-          <div className="flex items-center gap-2">
-            <LangToggle compact />
-            <button
-              onClick={signOut}
-              className="text-[13px] font-medium"
-              style={{ color: "rgba(5,5,8,0.45)" }}
-            >
-              {t("signOut")}
-            </button>
-          </div>
+          <button
+            onClick={signOut}
+            className="text-[13px] font-medium"
+            style={{ color: "rgba(5,5,8,0.45)" }}
+          >
+            Sign Out
+          </button>
         </header>
 
         <main className="flex-1 px-5 py-6 lg:px-10 lg:py-8 max-w-5xl w-full mx-auto">
@@ -166,20 +155,12 @@ function ExaminerLayoutInner({ children }: { children: React.ReactNode }) {
                 style={{ color: isActive ? "#0004E8" : "rgba(5,5,8,0.4)" }}
               >
                 <span style={{ color: isActive ? "#0004E8" : "rgba(5,5,8,0.35)" }}>{link.icon}</span>
-                {t(link.labelKey)}
+                {link.label}
               </Link>
             );
           })}
         </nav>
       </div>
     </div>
-  );
-}
-
-export default function ExaminerLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <LangProvider>
-      <ExaminerLayoutInner>{children}</ExaminerLayoutInner>
-    </LangProvider>
   );
 }

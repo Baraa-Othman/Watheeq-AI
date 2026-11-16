@@ -6,13 +6,11 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { LangProvider, useLang } from "@/lib/lang-context";
-import LangToggle from "@/components/LangToggle";
 
 const navLinks = [
   {
     href: "/dashboard/examiner/claims",
-    labelKey: "claimsQueue",
+    label: "Claims Queue",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
         <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
@@ -23,7 +21,7 @@ const navLinks = [
   },
   {
     href: "/dashboard/policies",
-    labelKey: "policyPlans",
+    label: "Policy Plans",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
         <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
@@ -35,10 +33,9 @@ const navLinks = [
   },
 ];
 
-function ExaminerDashboardInner() {
+export default function ExaminerDashboard() {
   const { user, profile, loading, signOut } = useAuth();
   const router = useRouter();
-  const { t, isRTL } = useLang();
 
   useEffect(() => {
     if (loading) return;
@@ -62,24 +59,23 @@ function ExaminerDashboardInner() {
   if (!user || profile.role !== "examiner") return null;
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row" style={{ background: "#fafafd" }} dir={isRTL ? "rtl" : "ltr"}>
+    <div className="min-h-screen flex flex-col lg:flex-row" style={{ background: "#fafafd" }}>
       {/* ── Sidebar (desktop) ── */}
       <aside
-        className="hidden lg:flex flex-col w-64 flex-shrink-0 min-h-screen border-e"
+        className="hidden lg:flex flex-col w-64 flex-shrink-0 min-h-screen border-r"
         style={{ background: "#fff", borderColor: "#e2e2ee" }}
       >
-        {/* Logo and Lang Toggle opposite */}
-        <div className="px-6 pt-7 pb-8 border-b flex items-center justify-between gap-2" style={{ borderColor: "#e2e2ee" }}>
+        {/* Logo */}
+        <div className="px-6 pt-7 pb-8 border-b" style={{ borderColor: "#e2e2ee" }}>
           <Link href="/dashboard/examiner" className="inline-flex items-center">
             <Image src="/watheeq-logo.png" alt="Watheeq" width={120} height={32} />
           </Link>
-          <LangToggle compact />
         </div>
 
         {/* User greeting */}
         <div className="px-6 py-4 border-b" style={{ borderColor: "#e2e2ee" }}>
           <p className="text-[11px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: "rgba(5,5,8,0.35)" }}>
-            {t("examinerRole")}
+            Claims Examiner
           </p>
           <p className="text-[14px] font-medium truncate" style={{ color: "#050508" }}>
             {profile.fullName}
@@ -101,7 +97,7 @@ function ExaminerDashboardInner() {
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
               <span style={{ color: "rgba(5,5,8,0.38)" }}>{link.icon}</span>
-              {t(link.labelKey)}
+              {link.label}
             </Link>
           ))}
         </nav>
@@ -110,25 +106,17 @@ function ExaminerDashboardInner() {
         <div className="px-3 pb-5 border-t pt-3" style={{ borderColor: "#e2e2ee" }}>
           <button
             onClick={async () => { await signOut(); router.push("/login"); }}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-medium w-full text-start transition-all"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-medium w-full text-left transition-all"
             style={{ color: "rgba(5,5,8,0.45)" }}
             onMouseEnter={(e) => (e.currentTarget.style.background = "#f9f9fc")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              className={isRTL ? "rotate-180" : ""}
-            >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
               <polyline points="16 17 21 12 16 7" />
               <line x1="21" y1="12" x2="9" y2="12" />
             </svg>
-            {t("signOut")}
+            Sign Out
           </button>
         </div>
       </aside>
@@ -143,16 +131,13 @@ function ExaminerDashboardInner() {
           <Link href="/dashboard/examiner">
             <Image src="/watheeq-logo.png" alt="Watheeq" width={110} height={30} />
           </Link>
-          <div className="flex items-center gap-3">
-            <LangToggle compact />
-            <button
-              onClick={async () => { await signOut(); router.push("/login"); }}
-              className="text-[13px] font-medium"
-              style={{ color: "rgba(5,5,8,0.45)" }}
-            >
-              {t("signOut")}
-            </button>
-          </div>
+          <button
+            onClick={async () => { await signOut(); router.push("/login"); }}
+            className="text-[13px] font-medium"
+            style={{ color: "rgba(5,5,8,0.45)" }}
+          >
+            Sign Out
+          </button>
         </header>
 
         <main className="flex-1 px-5 py-6 lg:px-10 lg:py-8 max-w-5xl w-full mx-auto">
@@ -164,10 +149,10 @@ function ExaminerDashboardInner() {
             {/* Page header */}
             <div className="mb-8">
               <h1 className="text-[28px] font-bold tracking-tight" style={{ color: "#050508" }}>
-                {t("welcomeExaminer")}{profile.fullName}
+                Welcome, {profile.fullName}
               </h1>
               <p className="text-[14px] mt-1" style={{ color: "rgba(5,5,8,0.45)" }}>
-                {t("examinerPortalSub")}
+                Review and process insurance claims with AI assistance.
               </p>
             </div>
 
@@ -185,10 +170,10 @@ function ExaminerDashboardInner() {
                   </svg>
                 </div>
                 <h3 className="font-bold text-base mb-1 group-hover:text-blue-700 transition-colors" style={{ color: "#050508" }}>
-                  {t("claimsQueue")}
+                  Claims Queue
                 </h3>
                 <p className="text-sm" style={{ color: "rgba(5,5,8,0.45)" }}>
-                  {t("claimsQueueCardDesc")}
+                  View, pick, and process submitted insurance claims.
                 </p>
               </Link>
 
@@ -208,10 +193,10 @@ function ExaminerDashboardInner() {
                   </svg>
                 </div>
                 <h3 className="font-bold text-base mb-1 group-hover:text-blue-700 transition-colors" style={{ color: "#050508" }}>
-                  {t("policyPlans")}
+                  Policy Plans
                 </h3>
                 <p className="text-sm" style={{ color: "rgba(5,5,8,0.45)" }}>
-                  {t("policyPlansCardDesc")}
+                  View and download available insurance policy plan documents.
                 </p>
               </Link>
             </div>
@@ -231,19 +216,11 @@ function ExaminerDashboardInner() {
               style={{ color: "rgba(5,5,8,0.4)" }}
             >
               <span style={{ color: "rgba(5,5,8,0.35)" }}>{link.icon}</span>
-              {t(link.labelKey)}
+              {link.label}
             </Link>
           ))}
         </nav>
       </div>
     </div>
-  );
-}
-
-export default function ExaminerDashboard() {
-  return (
-    <LangProvider>
-      <ExaminerDashboardInner />
-    </LangProvider>
   );
 }

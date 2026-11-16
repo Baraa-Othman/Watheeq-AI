@@ -7,8 +7,6 @@ import { apiFetchAuth } from "@/lib/apiClient";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
-import { LangProvider, useLang } from "@/lib/lang-context";
-import LangToggle from "@/components/LangToggle";
 
 interface ExaminerPerf {
   examinerId: string;
@@ -52,17 +50,8 @@ function formatDuration(seconds: number | null | undefined): string {
 }
 
 export default function AdminExaminersPage() {
-  return (
-    <LangProvider>
-      <AdminExaminersPageInner />
-    </LangProvider>
-  );
-}
-
-function AdminExaminersPageInner() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
-  const { t, isRTL } = useLang();
 
   const [examiners, setExaminers] = useState<ExaminerPerf[]>([]);
   const [fetching, setFetching] = useState(true);
@@ -94,16 +83,16 @@ function AdminExaminersPageInner() {
         setTimeout(() => fetchPerf(true), 800);
       } else {
         console.error("[AdminExaminers] fetch error:", e);
-        setError(e instanceof Error ? e.message : t("toastActionFailed"));
+        setError(e instanceof Error ? e.message : "Failed to load examiner metrics");
         setFetching(false);
       }
     }
-  }, [user, t]);
+  }, [user]);
 
   useEffect(() => {
     if (!loading && user && profile?.role === "admin") {
-      const timer = setTimeout(fetchPerf, 200);
-      return () => clearTimeout(timer);
+      const t = setTimeout(fetchPerf, 200);
+      return () => clearTimeout(t);
     }
   }, [loading, user, profile, fetchPerf]);
 
@@ -171,7 +160,7 @@ function AdminExaminersPageInner() {
     : null;
 
   return (
-    <div className="min-h-screen" style={{ background: "#fafafd" }} dir={isRTL ? "rtl" : "ltr"}>
+    <div className="min-h-screen" style={{ background: "#fafafd" }}>
       {/* Header */}
       <header className="h-16 border-b flex items-center justify-between px-6" style={{ borderColor: "#e2e2ee", background: "#fff" }}>
         <div className="flex items-center gap-3">
@@ -179,19 +168,16 @@ function AdminExaminersPageInner() {
             <Image src="/watheeq-logo.png" alt="Watheeq" width={110} height={30} />
           </Link>
           <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ background: "rgba(0,4,232,0.08)", color: "#0004E8" }}>
-            {t("adminRole")}
+            Admin Panel
           </span>
         </div>
-        <div className="flex items-center gap-3">
-          <LangToggle />
-          <Link
-            href="/dashboard/admin"
-            className="text-sm font-medium px-4 py-2 rounded-lg border transition-all"
-            style={{ borderColor: "#e2e2ee", color: "rgba(5,5,8,0.55)" }}
-          >
-            {isRTL ? "لوحة التحكم ←" : "← Dashboard"}
-          </Link>
-        </div>
+        <Link
+          href="/dashboard/admin"
+          className="text-sm font-medium px-4 py-2 rounded-lg border transition-all"
+          style={{ borderColor: "#e2e2ee", color: "rgba(5,5,8,0.55)" }}
+        >
+          ← Dashboard
+        </Link>
       </header>
 
       {/* Main */}
@@ -200,9 +186,9 @@ function AdminExaminersPageInner() {
           {/* Page header */}
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-2xl font-bold" style={{ color: "#050508" }}>{t("examinerPerformanceHeader")}</h1>
+              <h1 className="text-2xl font-bold" style={{ color: "#050508" }}>Examiner Performance</h1>
               <p className="text-sm mt-1" style={{ color: "rgba(5,5,8,0.45)" }}>
-                {t("productivityMetricsSub")}
+                Productivity metrics for every Claims Examiner
               </p>
             </div>
             <button
@@ -210,25 +196,24 @@ function AdminExaminersPageInner() {
               className="flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-all"
               style={{ borderColor: "#e2e2ee", color: "rgba(5,5,8,0.55)" }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={isRTL ? "scale-x-[-1]" : ""}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
               </svg>
-              {t("refresh")}
+              Refresh
             </button>
           </div>
 
           {/* Summary cards */}
           {!fetching && !error && examiners.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <SummaryCard label={t("summaryExaminers")} value={String(examiners.length)} />
+              <SummaryCard label="Examiners" value={String(examiners.length)} />
               <SummaryCard
-                label={t("summaryAvgHandlingTime")}
+                label="Avg Handling Time"
                 value={formatDuration(overallAvgHandlingSeconds)}
                 accent="#0004E8"
-                isDuration={overallAvgHandlingSeconds !== null}
               />
-              <SummaryCard label={t("summaryApproved")} value={String(totals.approved)} accent="#15803d" />
-              <SummaryCard label={t("summaryRejected")} value={String(totals.rejected)} accent="#dc2626" />
+              <SummaryCard label="Approved" value={String(totals.approved)} accent="#15803d" />
+              <SummaryCard label="Rejected" value={String(totals.rejected)} accent="#dc2626" />
             </div>
           )}
 
@@ -250,30 +235,27 @@ function AdminExaminersPageInner() {
                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
                   </svg>
                 </div>
-                <p className="font-semibold" style={{ color: "#050508" }}>{t("noExaminersYet")}</p>
-                <p className="text-sm mt-1" style={{ color: "rgba(5,5,8,0.4)" }}>{t("noExaminersYetSub")}</p>
+                <p className="font-semibold" style={{ color: "#050508" }}>No examiners yet</p>
+                <p className="text-sm mt-1" style={{ color: "rgba(5,5,8,0.4)" }}>Approve a registration request to get started.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr style={{ borderBottom: "1px solid #f0f0f5" }}>
-                      <SortHeader label={t("tableHeaderExaminer")} col="fullName" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} align="start" />
-                      <SortHeader label={t("tableHeaderAvgHandling")} col="avgHandlingSeconds" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                      <SortHeader label={t("tableHeaderAssigned")} col="totalAssigned" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                      <SortHeader label={t("tableHeaderUnderReview")} col="underReview" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                      <SortHeader label={t("tableHeaderApproved")} col="approved" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                      <SortHeader label={t("tableHeaderRejected")} col="rejected" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                      <SortHeader label={t("tableHeaderApprovalRate")} col="approvalRate" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
+                      <SortHeader label="Examiner" col="fullName" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} align="left" />
+                      <SortHeader label="Avg Handling Time" col="avgHandlingSeconds" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
+                      <SortHeader label="Assigned" col="totalAssigned" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
+                      <SortHeader label="Under Review" col="underReview" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
+                      <SortHeader label="Approved" col="approved" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
+                      <SortHeader label="Rejected" col="rejected" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
+                      <SortHeader label="Approval Rate" col="approvalRate" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
                     </tr>
                   </thead>
                   <tbody>
                     {sorted.map((e, i) => {
                       const finalized = e.approved + e.rejected;
                       const ratePct = Math.round(e.approvalRate * 100);
-                      const overClaimsText = e.handledCount === 1 
-                        ? t("overClaimCount").replace("{count}", "1")
-                        : t("overClaimsCount").replace("{count}", String(e.handledCount));
                       return (
                         <motion.tr
                           key={e.examinerId}
@@ -285,7 +267,7 @@ function AdminExaminersPageInner() {
                           <td className="px-5 py-4">
                             <div className="flex flex-col">
                               <span className="text-sm font-semibold" style={{ color: "#050508" }}>
-                                {e.fullName || t("unnamedExaminer")}
+                                {e.fullName || "(unnamed)"}
                               </span>
                               {e.email && (
                                 <span className="text-xs" style={{ color: "rgba(5,5,8,0.45)" }}>{e.email}</span>
@@ -295,19 +277,19 @@ function AdminExaminersPageInner() {
                           <td className="px-5 py-4 text-center">
                             {e.avgHandlingSeconds !== null ? (
                               <div className="flex flex-col items-center">
-                                <span className="text-sm font-bold" style={{ color: "#0004E8" }} dir="ltr">
+                                <span className="text-sm font-bold" style={{ color: "#0004E8" }}>
                                   {formatDuration(e.avgHandlingSeconds)}
                                 </span>
                                 <span className="text-[10px] mt-0.5" style={{ color: "rgba(5,5,8,0.45)" }}>
-                                  {overClaimsText}
+                                  over {e.handledCount} {e.handledCount === 1 ? "claim" : "claims"}
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-xs" style={{ color: "rgba(5,5,8,0.3)" }}>{t("noClosedClaimsYetText")}</span>
+                              <span className="text-xs" style={{ color: "rgba(5,5,8,0.3)" }}>No closed claims yet</span>
                             )}
                           </td>
                           <td className="px-5 py-4 text-center">
-                            <span className="text-sm font-bold font-mono" style={{ color: "#050508" }} dir="ltr">{e.totalAssigned}</span>
+                            <span className="text-sm font-bold" style={{ color: "#050508" }}>{e.totalAssigned}</span>
                           </td>
                           <td className="px-5 py-4 text-center">
                             <PillNumber value={e.underReview} bg="rgba(168,85,247,0.12)" color="#7e22ce" />
@@ -330,12 +312,12 @@ function AdminExaminersPageInner() {
                                     }}
                                   />
                                 </div>
-                                <span className="text-sm font-semibold w-12 text-end font-mono" style={{ color: "#050508" }} dir="ltr">
+                                <span className="text-sm font-semibold w-12 text-right" style={{ color: "#050508" }}>
                                   {ratePct}%
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-xs text-center block w-full" style={{ color: "rgba(5,5,8,0.3)" }}>{t("noDecisionsYet")}</span>
+                              <span className="text-xs" style={{ color: "rgba(5,5,8,0.3)" }}>No decisions yet</span>
                             )}
                           </td>
                         </motion.tr>
@@ -352,7 +334,7 @@ function AdminExaminersPageInner() {
   );
 }
 
-function SummaryCard({ label, value, accent, isDuration = false }: { label: string; value: string | number; accent?: string; isDuration?: boolean }) {
+function SummaryCard({ label, value, accent }: { label: string; value: string | number; accent?: string }) {
   return (
     <div
       className="rounded-2xl border p-5"
@@ -361,18 +343,17 @@ function SummaryCard({ label, value, accent, isDuration = false }: { label: stri
       <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(5,5,8,0.4)" }}>
         {label}
       </p>
-      <p className="text-3xl font-bold font-mono" style={{ color: accent ?? "#050508" }} dir={isDuration ? "ltr" : undefined}>{value}</p>
+      <p className="text-3xl font-bold" style={{ color: accent ?? "#050508" }}>{value}</p>
     </div>
   );
 }
 
 function PillNumber({ value, bg, color }: { value: number; bg: string; color: string }) {
-  if (value === 0) return <span className="text-sm font-mono" style={{ color: "rgba(5,5,8,0.3)" }}>0</span>;
+  if (value === 0) return <span className="text-sm" style={{ color: "rgba(5,5,8,0.3)" }}>0</span>;
   return (
     <span
-      className="inline-flex min-w-[2rem] justify-center px-2 py-0.5 rounded-full text-xs font-bold font-mono"
+      className="inline-flex min-w-[2rem] justify-center px-2 py-0.5 rounded-full text-xs font-bold"
       style={{ background: bg, color }}
-      dir="ltr"
     >
       {value}
     </span>
@@ -392,12 +373,9 @@ function SortHeader({
   sortKey: SortKey;
   sortDir: "asc" | "desc";
   onClick: (c: SortKey) => void;
-  align?: "start" | "center";
+  align?: "left" | "center";
 }) {
   const active = sortKey === col;
-  const { isRTL } = useLang();
-  
-  // Dynamic text alignment classes in Tailwind: text-start / text-center
   return (
     <th
       className={`px-5 py-3.5 text-${align} text-[11px] font-semibold uppercase tracking-widest cursor-pointer select-none`}

@@ -6,12 +6,10 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/apiClient";
-import { useLang } from "@/lib/lang-context";
 
 export default function LoginPage() {
   const router = useRouter();
   const { signInWithToken } = useAuth();
-  const { t, isRTL } = useLang();
 
   const [phone, setPhone] = useState("");
   const [otpSent, setOtpSent] = useState(false);
@@ -95,6 +93,7 @@ export default function LoginPage() {
       if (!res.ok) throw new Error(data.detail || data.error || "Verification failed");
 
       if (data.is_new_user) {
+        // Pass phone to register page via query param
         router.push(`/register?phone=${encodeURIComponent(formattedPhone)}`);
         return;
       }
@@ -120,11 +119,11 @@ export default function LoginPage() {
   return (
     <div className="w-full max-w-[400px]">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
-        <h1 className="text-[28px] font-bold tracking-tight mb-1.5" style={{ color: "#050508", textAlign: isRTL ? "right" : "left" }}>
-          {t("signinTitle")}
+        <h1 className="text-[28px] font-bold tracking-tight mb-1.5" style={{ color: "#050508" }}>
+          Sign in
         </h1>
-        <p className="text-[14px] mb-7" style={{ color: "rgba(5,5,8,0.45)", textAlign: isRTL ? "right" : "left" }}>
-          {t("signinSub")}
+        <p className="text-[14px] mb-7" style={{ color: "rgba(5,5,8,0.45)" }}>
+          Enter your phone number to continue
         </p>
 
         {error && (
@@ -153,17 +152,16 @@ export default function LoginPage() {
         >
           {/* Phone field */}
           <div className="px-5 pt-5 pb-4">
-            <label className="block text-[12px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(5,5,8,0.4)", textAlign: isRTL ? "right" : "left" }}>
-              {t("phoneNumberLabel")}
+            <label className="block text-[12px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(5,5,8,0.4)" }}>
+              Phone number
             </label>
             <div
               className="flex items-center rounded-xl border overflow-hidden transition-all focus-within:ring-[3px]"
               style={{ borderColor: "#e8e8f0" }}
             >
               <span
-                className={`flex items-center justify-center w-[52px] h-[46px] text-[13px] font-medium flex-shrink-0 ${isRTL ? "border-l" : "border-r"}`}
+                className="flex items-center justify-center w-[52px] h-[46px] text-[13px] font-medium flex-shrink-0 border-r"
                 style={{ background: "#f8f8fc", borderColor: "#e8e8f0", color: "rgba(5,5,8,0.38)" }}
-                dir="ltr"
               >
                 +966
               </span>
@@ -178,7 +176,6 @@ export default function LoginPage() {
                 placeholder="5XXXXXXXX"
                 className="flex-1 px-3 py-3 text-[14px] outline-none bg-transparent"
                 style={{ color: "#050508" }}
-                dir="ltr"
                 autoFocus
                 disabled={loading && otpSent}
               />
@@ -188,7 +185,7 @@ export default function LoginPage() {
                   className="px-3 text-[12px] font-medium"
                   style={{ color: "#0004E8" }}
                 >
-                  {t("editBtn")}
+                  Edit
                 </button>
               )}
             </div>
@@ -208,13 +205,13 @@ export default function LoginPage() {
               <div className="px-5 pt-3 pb-4">
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-[12px] font-semibold uppercase tracking-widest" style={{ color: "rgba(5,5,8,0.4)" }}>
-                    {t("verificationCodeLabel")}
+                    Verification code
                   </label>
-                  <span className="text-[11px]" style={{ color: "rgba(5,5,8,0.35)" }} dir="ltr">
-                    {t("sentTo")} {formattedPhone}
+                  <span className="text-[11px]" style={{ color: "rgba(5,5,8,0.35)" }}>
+                    Sent to {formattedPhone}
                   </span>
                 </div>
-                <div className="flex gap-2 justify-center" onPaste={handleOtpPaste} dir="ltr">
+                <div className="flex gap-2 justify-center" onPaste={handleOtpPaste}>
                   {otp.map((digit, i) => (
                     <input
                       key={i}
@@ -235,8 +232,7 @@ export default function LoginPage() {
                   className="mt-3 text-[12px] font-medium w-full text-center"
                   style={{ color: "rgba(5,5,8,0.35)" }}
                 >
-                  {t("didntGetCode")}{" "}
-                  <span style={{ color: "#0004E8" }}>{t("resendBtn")}</span>
+                  Didn&apos;t get it? <span style={{ color: "#0004E8" }}>Resend</span>
                 </button>
               </div>
             </motion.div>
@@ -258,12 +254,12 @@ export default function LoginPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  {otpSent ? t("verifyingBtn") : t("sendingCodeBtn")}
+                  {otpSent ? "Verifying..." : "Sending code..."}
                 </>
               ) : otpSent ? (
-                t("signInBtn")
+                "Sign in"
               ) : (
-                t("continueBtn")
+                "Continue"
               )}
             </button>
           </div>
@@ -272,7 +268,7 @@ export default function LoginPage() {
         {/* Secondary links */}
         <div className="mt-5 flex items-center gap-3">
           <div className="flex-1 h-px" style={{ background: "#ebebf0" }} />
-          <span className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "rgba(5,5,8,0.25)" }}>{t("orLabel")}</span>
+          <span className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "rgba(5,5,8,0.25)" }}>or</span>
           <div className="flex-1 h-px" style={{ background: "#ebebf0" }} />
         </div>
 
@@ -283,13 +279,13 @@ export default function LoginPage() {
           onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,4,232,0.03)")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
         >
-          {t("adminLoginBtn")}
+          Admin login
         </Link>
 
         <p className="mt-5 text-center text-[13px]" style={{ color: "rgba(5,5,8,0.38)" }}>
-          {t("noAccountLabel")}{" "}
+          No account?{" "}
           <Link href="/register" className="font-semibold" style={{ color: "#0004E8" }}>
-            {t("createOneLabel")}
+            Create one
           </Link>
         </p>
       </motion.div>

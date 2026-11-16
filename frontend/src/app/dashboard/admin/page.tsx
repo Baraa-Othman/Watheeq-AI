@@ -8,9 +8,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 
-import { LangProvider, useLang } from "@/lib/lang-context";
-import LangToggle from "@/components/LangToggle";
-
 const navLinks = [
   {
     href: "/dashboard/admin/requests",
@@ -120,17 +117,8 @@ const STATUS_META: Record<Status, { bar: string; label: string }> = {
 };
 
 export default function AdminDashboard() {
-  return (
-    <LangProvider>
-      <AdminDashboardInner />
-    </LangProvider>
-  );
-}
-
-function AdminDashboardInner() {
   const { user, profile, loading, signOut } = useAuth();
   const router = useRouter();
-  const { t, isRTL } = useLang();
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [claimsStats, setClaimsStats] = useState<ClaimsStats | null>(null);
   const [examinerPerf, setExaminerPerf] = useState<ExaminerPerf[] | null>(null);
@@ -196,24 +184,23 @@ function AdminDashboardInner() {
   if (!user || profile.role !== "admin") return null;
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row" dir={isRTL ? "rtl" : "ltr"} style={{ background: "#fafafd" }}>
+    <div className="min-h-screen flex flex-col lg:flex-row" style={{ background: "#fafafd" }}>
       {/* ── Sidebar (desktop) ── */}
       <aside
-        className={`hidden lg:flex flex-col w-64 flex-shrink-0 min-h-screen ${isRTL ? "border-l" : "border-r"}`}
+        className="hidden lg:flex flex-col w-64 flex-shrink-0 min-h-screen border-r"
         style={{ background: "#fff", borderColor: "#e2e2ee" }}
       >
-        {/* Logo + language toggle row */}
-        <div className="px-5 pt-7 pb-5 border-b flex items-center justify-between w-full gap-2" style={{ borderColor: "#e2e2ee" }}>
+        {/* Logo */}
+        <div className="px-6 pt-7 pb-8 border-b" style={{ borderColor: "#e2e2ee" }}>
           <Link href="/dashboard/admin" className="inline-flex items-center">
-            <Image src="/watheeq-logo.png" alt="Watheeq" width={110} height={29} className="shrink-0" />
+            <Image src="/watheeq-logo.png" alt="Watheeq" width={120} height={32} />
           </Link>
-          <LangToggle compact />
         </div>
 
         {/* User greeting */}
         <div className="px-6 py-4 border-b" style={{ borderColor: "#e2e2ee" }}>
           <p className="text-[11px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: "rgba(5,5,8,0.35)" }}>
-            {t("adminRole")}
+            Admin
           </p>
           <p className="text-[14px] font-medium truncate" style={{ color: "#050508" }}>
             {profile.fullName}
@@ -224,13 +211,6 @@ function AdminDashboardInner() {
         <nav className="flex-1 px-3 py-4 space-y-1">
           {navLinks.map((link) => {
             const isPending = link.href.includes("/requests") && pendingCount !== null && pendingCount > 0;
-            const localizedLabel =
-              link.label === "Examiner Requests" ? t("examinerRequests") :
-              link.label === "Policy Plans" ? t("policyPlansTitle") :
-              link.label === "Claims Statistics" ? t("claimsStats") :
-              link.label === "Examiner Performance" ? t("examinerPerf") :
-              link.label === "Audit Log" ? t("auditLog") : link.label;
-
             return (
               <Link
                 key={link.href}
@@ -245,7 +225,7 @@ function AdminDashboardInner() {
               >
                 <span className="flex items-center gap-3">
                   <span style={{ color: "rgba(5,5,8,0.38)" }}>{link.icon}</span>
-                  {localizedLabel}
+                  {link.label}
                 </span>
                 {isPending && (
                   <span
@@ -269,12 +249,12 @@ function AdminDashboardInner() {
             onMouseEnter={(e) => (e.currentTarget.style.background = "#f9f9fc")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={isRTL ? "rotate-180" : ""}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
               <polyline points="16 17 21 12 16 7" />
               <line x1="21" y1="12" x2="9" y2="12" />
             </svg>
-            {t("signOut")}
+            Sign Out
           </button>
         </div>
       </aside>
@@ -289,16 +269,13 @@ function AdminDashboardInner() {
           <Link href="/dashboard/admin">
             <Image src="/watheeq-logo.png" alt="Watheeq" width={110} height={30} />
           </Link>
-          <div className="flex items-center gap-3">
-            <LangToggle compact />
-            <button
-              onClick={async () => { await signOut(); router.push("/login"); }}
-              className="text-[13px] font-medium"
-              style={{ color: "rgba(5,5,8,0.45)" }}
-            >
-              {t("signOut")}
-            </button>
-          </div>
+          <button
+            onClick={async () => { await signOut(); router.push("/login"); }}
+            className="text-[13px] font-medium"
+            style={{ color: "rgba(5,5,8,0.45)" }}
+          >
+            Sign Out
+          </button>
         </header>
 
         <main className="flex-1 px-5 py-6 lg:px-10 lg:py-8 max-w-5xl w-full mx-auto">
@@ -310,10 +287,10 @@ function AdminDashboardInner() {
             {/* Page header */}
             <div className="mb-8">
               <h1 className="text-[28px] font-bold tracking-tight" style={{ color: "#050508" }}>
-                {t("welcomeAdmin")}{profile.fullName}
+                Welcome, {profile.fullName}
               </h1>
               <p className="text-[14px] mt-1" style={{ color: "rgba(5,5,8,0.45)" }}>
-                {t("adminPortalSub")}
+                Manage examiners, policies, and monitor system activity.
               </p>
             </div>
 
@@ -325,13 +302,13 @@ function AdminDashboardInner() {
                 style={{ borderColor: "#e2e2ee", background: "#fff", boxShadow: "0 1px 3px rgba(5,5,8,0.05)" }}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <h3 className="text-base font-bold" style={{ color: "#050508" }}>{t("claimsByStatus")}</h3>
+                  <h3 className="text-base font-bold" style={{ color: "#050508" }}>Claims by status</h3>
                   <Link href="/dashboard/admin/statistics" className="text-xs font-semibold" style={{ color: "#0004E8" }}>
-                    {t("fullView")}
+                    Full view →
                   </Link>
                 </div>
                 <p className="text-xs mb-5" style={{ color: "rgba(5,5,8,0.45)" }}>
-                  {claimsStats ? `${claimsStats.total}${t("totalClaims")}` : t("loadingTotals")}
+                  {claimsStats ? `${claimsStats.total} total claims` : "Loading totals…"}
                 </p>
 
                 {statsLoading && !claimsStats ? (
@@ -339,7 +316,7 @@ function AdminDashboardInner() {
                 ) : claimsStats ? (
                   <ClaimsDoughnut stats={claimsStats} />
                 ) : (
-                  <p className="text-xs italic" style={{ color: "rgba(5,5,8,0.4)" }}>{t("unableLoadStats")}</p>
+                  <p className="text-xs italic" style={{ color: "rgba(5,5,8,0.4)" }}>Unable to load claims statistics.</p>
                 )}
               </div>
 
@@ -349,13 +326,13 @@ function AdminDashboardInner() {
                 style={{ borderColor: "#e2e2ee", background: "#fff", boxShadow: "0 1px 3px rgba(5,5,8,0.05)" }}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <h3 className="text-base font-bold" style={{ color: "#050508" }}>{t("fastestExaminers")}</h3>
+                  <h3 className="text-base font-bold" style={{ color: "#050508" }}>Fastest examiners</h3>
                   <Link href="/dashboard/admin/examiners" className="text-xs font-semibold" style={{ color: "#0004E8" }}>
-                    {t("fullView")}
+                    Full view →
                   </Link>
                 </div>
                 <p className="text-xs mb-5" style={{ color: "rgba(5,5,8,0.45)" }}>
-                  {t("avgTimePickDecision")}
+                  Average time from pick to decision
                 </p>
 
                 {statsLoading && !examinerPerf ? (
@@ -364,7 +341,7 @@ function AdminDashboardInner() {
                   <ExaminerHandlingTimeChart perf={examinerPerf} />
                 ) : (
                   <p className="text-xs italic" style={{ color: "rgba(5,5,8,0.4)" }}>
-                    {t("noClosedClaimsYet")}
+                    No closed claims yet — handling time will appear once examiners approve or reject claims.
                   </p>
                 )}
               </div>
@@ -392,15 +369,15 @@ function AdminDashboardInner() {
                   </div>
                   {pendingCount !== null && pendingCount > 0 && (
                     <span className="px-2.5 py-1 rounded-full text-xs font-bold" style={{ background: "rgba(234,179,8,0.15)", color: "#b45309" }}>
-                      {pendingCount}{t("pendingLabel")}
+                      {pendingCount} pending
                     </span>
                   )}
                 </div>
                 <h3 className="font-bold text-base mb-1 group-hover:text-blue-700 transition-colors" style={{ color: "#050508" }}>
-                  {t("examinerRequests")}
+                  Examiner Requests
                 </h3>
                 <p className="text-sm" style={{ color: "rgba(5,5,8,0.45)" }}>
-                  {t("requestsCardDesc")}
+                  Review, approve, or reject Claims Examiner registration requests.
                 </p>
               </Link>
 
@@ -420,10 +397,10 @@ function AdminDashboardInner() {
                   </svg>
                 </div>
                 <h3 className="font-bold text-base mb-1 group-hover:text-blue-700 transition-colors" style={{ color: "#050508" }}>
-                  {t("policyPlansTitle")}
+                  Policy Plans
                 </h3>
                 <p className="text-sm" style={{ color: "rgba(5,5,8,0.45)" }}>
-                  {t("policiesCardDesc")}
+                  Upload and manage insurance policy plan documents.
                 </p>
               </Link>
 
@@ -442,10 +419,10 @@ function AdminDashboardInner() {
                   </svg>
                 </div>
                 <h3 className="font-bold text-base mb-1 group-hover:text-blue-700 transition-colors" style={{ color: "#050508" }}>
-                  {t("claimsStats")}
+                  Claims Statistics
                 </h3>
                 <p className="text-sm" style={{ color: "rgba(5,5,8,0.45)" }}>
-                  {t("statsCardDesc")}
+                  Monitor overall claim processing activity grouped by status.
                 </p>
               </Link>
 
@@ -461,10 +438,10 @@ function AdminDashboardInner() {
                   </svg>
                 </div>
                 <h3 className="font-bold text-base mb-1 group-hover:text-blue-700 transition-colors" style={{ color: "#050508" }}>
-                  {t("examinerPerf")}
+                  Examiner Performance
                 </h3>
                 <p className="text-sm" style={{ color: "rgba(5,5,8,0.45)" }}>
-                  {t("perfCardDesc")}
+                  Evaluate Claims Examiner productivity, decisions, and approval rates.
                 </p>
               </Link>
 
@@ -483,10 +460,10 @@ function AdminDashboardInner() {
                   </svg>
                 </div>
                 <h3 className="font-bold text-base mb-1 group-hover:text-blue-700 transition-colors" style={{ color: "#050508" }}>
-                  {t("auditLog")}
+                  Audit Log
                 </h3>
                 <p className="text-sm" style={{ color: "rgba(5,5,8,0.45)" }}>
-                  {t("auditCardDesc")}
+                  Track every action across the system.
                 </p>
               </Link>
             </div>
@@ -495,29 +472,20 @@ function AdminDashboardInner() {
 
         {/* Mobile bottom nav */}
         <nav
-          className="lg:hidden fixed bottom-0 left-0 right-0 border-t flex z-30 font-medium"
+          className="lg:hidden fixed bottom-0 left-0 right-0 border-t flex z-30"
           style={{ background: "#fff", borderColor: "#e2e2ee" }}
         >
-          {navLinks.map((link) => {
-            const localizedLabel =
-              link.label === "Examiner Requests" ? t("examinerRequests") :
-              link.label === "Policy Plans" ? t("policyPlansTitle") :
-              link.label === "Claims Statistics" ? t("claimsStats") :
-              link.label === "Examiner Performance" ? t("examinerPerf") :
-              link.label === "Audit Log" ? t("auditLog") : link.label;
-
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="flex-1 flex flex-col items-center justify-center py-3 gap-1 text-[11px] transition-colors"
-                style={{ color: "rgba(5,5,8,0.4)" }}
-              >
-                <span style={{ color: "rgba(5,5,8,0.35)" }}>{link.icon}</span>
-                {localizedLabel}
-              </Link>
-            );
-          })}
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="flex-1 flex flex-col items-center justify-center py-3 gap-1 text-[11px] font-medium transition-colors"
+              style={{ color: "rgba(5,5,8,0.4)" }}
+            >
+              <span style={{ color: "rgba(5,5,8,0.35)" }}>{link.icon}</span>
+              {link.label}
+            </Link>
+          ))}
         </nav>
       </div>
     </div>
@@ -525,7 +493,6 @@ function AdminDashboardInner() {
 }
 
 function ClaimsDoughnut({ stats }: { stats: ClaimsStats }) {
-  const { t, isRTL } = useLang();
   const total = STATUS_ORDER.reduce((sum, s) => sum + (stats.byStatus?.[s] ?? 0), 0);
   const [hovered, setHovered] = useState<Status | null>(null);
 
@@ -533,16 +500,6 @@ function ClaimsDoughnut({ stats }: { stats: ClaimsStats }) {
   const radius = 70;
   const stroke = 22;
   const circumference = 2 * Math.PI * radius;
-
-  // Translate helper
-  const getStatusLabel = (status: string) => {
-    if (status === "submitted") return t("statusSubmitted");
-    if (status === "under review") return t("statusUnderReview");
-    if (status === "approved") return t("statusApproved");
-    if (status === "rejected") return t("statusRejected");
-    if (status === "cancelled") return t("statusCancelled");
-    return status;
-  };
 
   // Build slices with cumulative offsets, skip zero counts
   let offset = 0;
@@ -558,7 +515,7 @@ function ClaimsDoughnut({ stats }: { stats: ClaimsStats }) {
   if (total === 0) {
     return (
       <div className="flex items-center justify-center h-[180px] text-sm italic" style={{ color: "rgba(5,5,8,0.4)" }}>
-        {t("noClaimsYet")}
+        No claims submitted yet.
       </div>
     );
   }
@@ -567,7 +524,7 @@ function ClaimsDoughnut({ stats }: { stats: ClaimsStats }) {
   const activePct = activeSlice ? Math.round(activeSlice.fraction * 100) : 0;
 
   return (
-    <div className={`flex flex-col sm:flex-row items-center gap-6 ${isRTL ? "sm:flex-row-reverse" : ""}`}>
+    <div className="flex flex-col sm:flex-row items-center gap-6">
       {/* SVG doughnut */}
       <div className="relative flex-shrink-0">
         <svg width="180" height="180" viewBox="0 0 180 180">
@@ -607,7 +564,7 @@ function ClaimsDoughnut({ stats }: { stats: ClaimsStats }) {
                   onMouseEnter={() => setHovered(sl.status)}
                   onMouseLeave={() => setHovered(null)}
                 >
-                  <title>{`${getStatusLabel(sl.status)}: ${sl.count} (${Math.round(sl.fraction * 100)}%)`}</title>
+                  <title>{`${STATUS_META[sl.status].label}: ${sl.count} (${Math.round(sl.fraction * 100)}%)`}</title>
                 </motion.circle>
               );
             })}
@@ -621,17 +578,17 @@ function ClaimsDoughnut({ stats }: { stats: ClaimsStats }) {
                 {activeSlice.count}
               </span>
               <span className="text-[10px] uppercase tracking-widest font-semibold mt-0.5" style={{ color: "rgba(5,5,8,0.55)" }}>
-                {getStatusLabel(activeSlice.status)}
+                {STATUS_META[activeSlice.status].label}
               </span>
               <span className="text-[10px] font-semibold" style={{ color: "rgba(5,5,8,0.4)" }}>
-                {isRTL ? `%${activePct} من الإجمالي` : `${activePct}% of total`}
+                {activePct}% of total
               </span>
             </>
           ) : (
             <>
               <span className="text-2xl font-bold" style={{ color: "#050508" }}>{total}</span>
               <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: "rgba(5,5,8,0.4)" }}>
-                {isRTL ? "الإجمالي" : "Total"}
+                Total
               </span>
             </>
           )}
@@ -661,10 +618,10 @@ function ClaimsDoughnut({ stats }: { stats: ClaimsStats }) {
                   style={{ background: STATUS_META[sl.status].bar }}
                 />
                 <span className="truncate" style={{ color: "rgba(5,5,8,0.7)" }}>
-                  {getStatusLabel(sl.status)}
+                  {STATUS_META[sl.status].label}
                 </span>
               </span>
-              <span className="font-semibold tabular-nums" style={{ color: "#050508" }} dir="ltr">
+              <span className="font-semibold tabular-nums" style={{ color: "#050508" }}>
                 {sl.count} <span className="font-normal" style={{ color: "rgba(5,5,8,0.4)" }}>({pct}%)</span>
               </span>
             </div>
@@ -676,7 +633,6 @@ function ClaimsDoughnut({ stats }: { stats: ClaimsStats }) {
 }
 
 function ExaminerHandlingTimeChart({ perf }: { perf: ExaminerPerf[] }) {
-  const { t, isRTL } = useLang();
   const ranked = perf
     .filter((e) => e.avgHandlingSeconds !== null && e.handledCount > 0)
     .sort((a, b) => (a.avgHandlingSeconds as number) - (b.avgHandlingSeconds as number))
@@ -695,7 +651,7 @@ function ExaminerHandlingTimeChart({ perf }: { perf: ExaminerPerf[] }) {
           <div key={e.examinerId}>
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-semibold truncate max-w-[180px]" style={{ color: "#050508" }}>
-                {i === 0 && <span className={isRTL ? "ml-1.5" : "mr-1.5"}>⚡</span>}
+                {i === 0 && <span className="mr-1.5">⚡</span>}
                 {e.fullName || "(unnamed)"}
               </span>
               <span className="text-xs font-bold tabular-nums" style={{ color: "#0004E8" }}>
@@ -707,13 +663,13 @@ function ExaminerHandlingTimeChart({ perf }: { perf: ExaminerPerf[] }) {
                 initial={{ width: 0 }}
                 animate={{ width: `${width}%` }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
-                className={`h-full rounded-md ${isRTL ? "mr-0" : "ml-0"}`}
+                className="h-full rounded-md"
                 style={{ background: color }}
                 title={`${e.handledCount} closed claim(s)`}
               />
             </div>
             <span className="text-[10px] mt-0.5 inline-block" style={{ color: "rgba(5,5,8,0.4)" }}>
-              {isRTL ? `خلال ${e.handledCount} مطالبات` : `over ${e.handledCount} claims`}
+              over {e.handledCount} {e.handledCount === 1 ? "claim" : "claims"}
             </span>
           </div>
         );
@@ -756,7 +712,6 @@ const QUARTER_LABELS: Record<number, string> = { 1: "Q1", 2: "Q2", 3: "Q3", 4: "
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function VolumeOverTimeSection({ user }: { user: any }) {
-  const { t, isRTL } = useLang();
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentQuarter = Math.floor(now.getMonth() / 3) + 1;
@@ -796,7 +751,7 @@ function VolumeOverTimeSection({ user }: { user: any }) {
     >
       {/* Header + controls */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
-        <h3 className="text-base font-bold" style={{ color: "#050508" }}>{t("volumeOverTime")}</h3>
+        <h3 className="text-base font-bold" style={{ color: "#050508" }}>Volume over time</h3>
 
         <div className="flex items-center gap-2">
           <select
@@ -822,7 +777,7 @@ function VolumeOverTimeSection({ user }: { user: any }) {
                     : { color: "rgba(5,5,8,0.45)" }
                 }
               >
-                {isRTL ? `الربع ${q}` : `Q${q}`}
+                {QUARTER_LABELS[q]}
               </button>
             ))}
           </div>
@@ -832,7 +787,7 @@ function VolumeOverTimeSection({ user }: { user: any }) {
       {loading ? (
         <ChartSkeleton rows={3} />
       ) : error ? (
-        <p className="text-xs italic" style={{ color: "#dc2626" }}>{isRTL ? "فشل تحميل بيانات حجم المطالبات" : error}</p>
+        <p className="text-xs italic" style={{ color: "#dc2626" }}>{error}</p>
       ) : data ? (
         <DailyLineChart
           buckets={data.buckets}
@@ -915,9 +870,8 @@ function DailyLineChart({
   hovered: VolumeBucket | null;
   onHover: (b: VolumeBucket | null) => void;
 }) {
-  const { t, isRTL } = useLang();
   if (buckets.length === 0) {
-    return <p className="text-xs italic" style={{ color: "rgba(5,5,8,0.4)" }}>{isRTL ? "لا توجد أيام في هذه الفترة" : "No days in this range."}</p>;
+    return <p className="text-xs italic" style={{ color: "rgba(5,5,8,0.4)" }}>No days in this range.</p>;
   }
 
   // Convert daily counts to a running total through each day
@@ -952,7 +906,7 @@ function DailyLineChart({
     if (d.getUTCDate() === 1) {
       monthMarkers.push({
         idx: i,
-        label: d.toLocaleString(isRTL ? "ar-SA" : "en-US", { month: "short", timeZone: "UTC" }),
+        label: d.toLocaleString("en-US", { month: "short", timeZone: "UTC" }),
       });
     }
   });
@@ -1031,14 +985,14 @@ function DailyLineChart({
               color: "#fff",
             }}
           >
-            {new Date(hoveredPoint.date + "T00:00:00Z").toLocaleDateString(isRTL ? "ar-SA" : "en-US", {
+            {new Date(hoveredPoint.date + "T00:00:00Z").toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
               year: "numeric",
               timeZone: "UTC",
             })}
-            <span className={isRTL ? "mr-2 font-bold" : "ml-2 font-bold"} style={{ color: "#8ab4ff" }}>
-              {hoveredPoint.count} {isRTL ? "الإجمالي" : "total"}
+            <span className="ml-2 font-bold" style={{ color: "#8ab4ff" }}>
+              {hoveredPoint.count} total
             </span>
           </div>
         )}

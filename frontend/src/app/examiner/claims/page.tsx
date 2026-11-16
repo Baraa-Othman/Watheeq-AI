@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetchAuth } from "@/lib/apiClient";
 import { motion, AnimatePresence } from "framer-motion";
-import { useLang } from "@/lib/lang-context";
 
 type ClaimStatus = "submitted" | "under review" | "approved" | "rejected" | "cancelled";
 
@@ -21,6 +20,14 @@ interface Claim {
 }
 
 type Tab = "all" | "submitted" | "under review" | "approved" | "rejected";
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "submitted", label: "Submitted" },
+  { key: "under review", label: "Under Review" },
+  { key: "approved", label: "Approved" },
+  { key: "rejected", label: "Rejected" },
+];
 
 const STATUS_CONFIG: Record<ClaimStatus, { label: string; bg: string; color: string; dot: string }> = {
   submitted: {
@@ -56,23 +63,14 @@ const STATUS_CONFIG: Record<ClaimStatus, { label: string; bg: string; color: str
 };
 
 function StatusBadge({ status }: { status: ClaimStatus }) {
-  const { t } = useLang();
   const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG["submitted"];
-
-  const labelText =
-    status === "submitted" ? t("statusSubmitted") :
-    status === "under review" ? t("statusUnderReview") :
-    status === "approved" ? t("statusApproved") :
-    status === "rejected" ? t("statusRejected") :
-    status === "cancelled" ? t("statusCancelled") : cfg.label;
-
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide uppercase"
       style={{ background: cfg.bg, color: cfg.color }}
     >
       <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cfg.dot }} />
-      {labelText}
+      {cfg.label}
     </span>
   );
 }
@@ -95,7 +93,6 @@ function formatDate(iso: string) {
 export default function ExaminerClaimsPage() {
   const { user, profile } = useAuth();
   const router = useRouter();
-  const { t, isRTL } = useLang();
 
   const [claims, setClaims] = useState<Claim[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,14 +100,6 @@ export default function ExaminerClaimsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("submitted");
   const [picking, setPicking] = useState<string | null>(null);
   const [pickError, setPickError] = useState("");
-
-  const localizedTabs = [
-    { key: "all" as Tab, label: t("tabAll") },
-    { key: "submitted" as Tab, label: t("tabSubmitted") },
-    { key: "under review" as Tab, label: t("tabUnderReview") },
-    { key: "approved" as Tab, label: t("tabApproved") },
-    { key: "rejected" as Tab, label: t("tabRejected") },
-  ];
 
   const fetchClaims = useCallback(() => {
     if (!user) return;
@@ -158,14 +147,14 @@ export default function ExaminerClaimsPage() {
   };
 
   return (
-    <div dir={isRTL ? "rtl" : "ltr"}>
+    <div>
       {/* Page header */}
       <div className="mb-6">
         <h1 className="text-[26px] font-bold tracking-tight" style={{ color: "#050508" }}>
-          {t("claimsQueueTitle")}
+          Claims Queue
         </h1>
         <p className="text-[14px] mt-0.5" style={{ color: "rgba(5,5,8,0.45)" }}>
-          {t("claimsQueueSub")}
+          Review and process insurance claims assigned to you
         </p>
       </div>
 
@@ -194,7 +183,7 @@ export default function ExaminerClaimsPage() {
           {pickError}
           <button
             onClick={() => setPickError("")}
-            className={`${isRTL ? "mr-auto" : "ml-auto"} hover:opacity-70 transition-opacity`}
+            className="ml-auto hover:opacity-70 transition-opacity"
             aria-label="Dismiss"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -209,7 +198,7 @@ export default function ExaminerClaimsPage() {
         className="flex gap-1 p-1 rounded-xl mb-6 overflow-x-auto"
         style={{ background: "#f0f0f6" }}
       >
-        {localizedTabs.map((tab) => {
+        {TABS.map((tab) => {
           const isActive = activeTab === tab.key;
           const count = tabCount(tab.key);
           return (
@@ -268,14 +257,14 @@ export default function ExaminerClaimsPage() {
             </svg>
           </div>
           <h2 className="text-[18px] font-bold mb-1.5" style={{ color: "#050508" }}>
-            {t("noClaims")}
+            No claims here
           </h2>
           <p className="text-[14px] max-w-xs" style={{ color: "rgba(5,5,8,0.45)" }}>
             {activeTab === "submitted"
-              ? t("noSubmittedClaims")
+              ? "No submitted claims waiting for review."
               : activeTab === "under review"
-              ? t("noUnderReviewClaims")
-              : t("noOtherClaims")}
+              ? "You have no claims currently under your review."
+              : `No ${activeTab} claims to show.`}
           </p>
         </motion.div>
       )}
@@ -319,12 +308,12 @@ export default function ExaminerClaimsPage() {
                       </div>
                       <div className="flex flex-wrap gap-x-5 gap-y-1">
                         <span className="text-[13px]" style={{ color: "rgba(5,5,8,0.45)" }}>
-                          <span className="font-medium" style={{ color: "rgba(5,5,8,0.6)" }}>{t("policyLabel")}</span>{" "}
+                          <span className="font-medium" style={{ color: "rgba(5,5,8,0.6)" }}>Policy:</span>{" "}
                           {claim.policyName}
                         </span>
                         {claim.treatmentType && (
                           <span className="text-[13px]" style={{ color: "rgba(5,5,8,0.45)" }}>
-                            <span className="font-medium" style={{ color: "rgba(5,5,8,0.6)" }}>{t("treatmentLabel")}</span>{" "}
+                            <span className="font-medium" style={{ color: "rgba(5,5,8,0.6)" }}>Treatment:</span>{" "}
                             {claim.treatmentType}
                           </span>
                         )}
@@ -333,7 +322,7 @@ export default function ExaminerClaimsPage() {
                         </span>
                       </div>
                       <p className="text-[11px] mt-2 font-mono" style={{ color: "rgba(5,5,8,0.28)" }}>
-                        {t("refLabel")} {claim.claimId}
+                        Ref: {claim.claimId}
                       </p>
                     </div>
 
@@ -356,14 +345,14 @@ export default function ExaminerClaimsPage() {
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                               </svg>
-                              {t("pickingBtn")}
+                              Picking...
                             </>
                           ) : (
                             <>
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className={isRTL ? "rotate-180" : ""}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                                 <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
                               </svg>
-                              {t("pickBtn")}
+                              Pick
                             </>
                           )}
                         </button>
@@ -379,8 +368,8 @@ export default function ExaminerClaimsPage() {
                           onMouseEnter={(e) => (e.currentTarget.style.background = "#f9f9fc")}
                           onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                         >
-                          {t("viewBtn")}
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isRTL ? "rotate-180" : ""}>
+                          View
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M9 18l6-6-6-6" />
                           </svg>
                         </button>

@@ -6,7 +6,6 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/apiClient";
-import { useLang } from "@/lib/lang-context";
 
 type Role = "claimant" | "examiner";
 
@@ -30,7 +29,6 @@ function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { signInWithToken } = useAuth();
-  const { t, isRTL } = useLang();
 
   const phoneFromQuery = searchParams.get("phone") ?? "";
 
@@ -112,10 +110,12 @@ function RegisterForm() {
 
   const otpValue = otp.join("");
 
+  // ── Claimant flow ────────────────────────────────────────────────────────
   const handleClaimantVerifyAndRegister = async () => {
     setError("");
     setLoading(true);
     try {
+      // 1. Verify OTP
       const verifyRes = await apiFetch("/api/auth/verify-otp", {
         method: "POST",
         body: JSON.stringify({ phone: formattedPhone, otp: otpValue }),
@@ -123,12 +123,14 @@ function RegisterForm() {
       const verifyData = await verifyRes.json();
       if (!verifyRes.ok) throw new Error(verifyData.detail || verifyData.error || "OTP verification failed");
 
+      // If already exists (shouldn't happen here but handle gracefully)
       if (!verifyData.is_new_user && verifyData.token) {
         const profile = await signInWithToken(verifyData.token);
         router.push(`/dashboard/${profile.role}`);
         return;
       }
 
+      // 2. Create claimant account
       const regRes = await apiFetch("/api/auth/signup", {
         method: "POST",
         body: JSON.stringify({
@@ -157,10 +159,12 @@ function RegisterForm() {
     }
   };
 
+  // ── Examiner flow ─────────────────────────────────────────────────────────
   const handleExaminerVerifyAndRegister = async () => {
     setError("");
     setLoading(true);
     try {
+      // 1. Verify OTP (just to confirm phone ownership — no user account yet)
       const verifyRes = await apiFetch("/api/auth/verify-otp", {
         method: "POST",
         body: JSON.stringify({ phone: formattedPhone, otp: otpValue }),
@@ -168,6 +172,7 @@ function RegisterForm() {
       const verifyData = await verifyRes.json();
       if (!verifyRes.ok) throw new Error(verifyData.detail || verifyData.error || "OTP verification failed");
 
+      // 2. Submit registration request
       const reqRes = await apiFetch("/api/auth/examiner/register", {
         method: "POST",
         body: JSON.stringify({
@@ -180,11 +185,7 @@ function RegisterForm() {
       const reqData = await reqRes.json();
       if (!reqRes.ok) throw new Error(reqData.detail || reqData.error || "Submission failed");
 
-      setSuccessMessage(
-        isRTL 
-          ? "تم تقديم طلبك لتصبح مراجع مطالبات بنجاح. سيقوم المسؤولون بمراجعة طلبك وتفعيله قريباً."
-          : reqData.message || "Your examiner registration request has been submitted successfully."
-      );
+      setSuccessMessage(reqData.message);
       setSuccess(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Submission failed");
@@ -198,6 +199,7 @@ function RegisterForm() {
     else handleClaimantVerifyAndRegister();
   };
 
+  // Validation
   const claimantReady = role === "claimant"
     ? Boolean(fullName.trim() && nationalId.trim() && email.trim() && hospitalName.trim() && phone.trim())
     : true;
@@ -212,6 +214,7 @@ function RegisterForm() {
     else handleSendOtp();
   };
 
+  // ── Success screen ────────────────────────────────────────────────────────
   if (success) {
     return (
       <div className="w-full max-w-[400px]">
@@ -226,18 +229,18 @@ function RegisterForm() {
             </svg>
           </div>
           <h2 className="text-xl font-bold mb-2" style={{ color: "#050508" }}>
-            {role === "examiner" ? t("requestSubmittedTitle") : t("youAreAllSetTitle")}
+            {role === "examiner" ? "Request Submitted" : "You're all set!"}
           </h2>
           <p className="text-[13px] mb-6 leading-relaxed" style={{ color: "rgba(5,5,8,0.45)" }}>
-            {successMessage}
+            {successMessage || "Your request has been received."}
           </p>
           <Link
             href="/login"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white"
             style={{ background: "#0004E8" }}
           >
-            {t("goToSignInBtn")}
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ transform: isRTL ? "scaleX(-1)" : "none" }}>
+            Go to Sign In
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
             </svg>
           </Link>
@@ -246,14 +249,17 @@ function RegisterForm() {
     );
   }
 
+  // ── Form ──────────────────────────────────────────────────────────────────
   return (
     <div className="w-full max-w-[400px]">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
-        <h1 className="text-[28px] font-bold tracking-tight mb-1.5" style={{ color: "#050508", textAlign: isRTL ? "right" : "left" }}>
-          {t("registerTitle")}
+        <h1 className="text-[28px] font-bold tracking-tight mb-1.5" style={{ color: "#050508" }}>
+          Create account
         </h1>
-        <p className="text-[14px] mb-7" style={{ color: "rgba(5,5,8,0.45)", textAlign: isRTL ? "right" : "left" }}>
-          {t("registerSub")}
+        <p className="text-[14px] mb-7" style={{ color: "rgba(5,5,8,0.45)" }}>
+          {role === "examiner"
+            ? "Submit a registration request as a Claims Examiner"
+            : "Join Watheeq as a claimant"}
         </p>
 
         {error && (
@@ -276,13 +282,13 @@ function RegisterForm() {
         >
           {/* Role selector */}
           <div className="px-5 pt-5 pb-3">
-            <label className="block text-[12px] font-semibold uppercase tracking-widest mb-2.5" style={{ color: "rgba(5,5,8,0.4)", textAlign: isRTL ? "right" : "left" }}>
-              {t("roleSelectionLabel")}
+            <label className="block text-[12px] font-semibold uppercase tracking-widest mb-2.5" style={{ color: "rgba(5,5,8,0.4)" }}>
+              I am a
             </label>
             <div className="flex gap-2">
               {([
-                { id: "claimant" as Role, label: t("claimantRole") },
-                { id: "examiner" as Role, label: t("examinerRole") },
+                { id: "claimant" as Role, label: "Claimant" },
+                { id: "examiner" as Role, label: "Claims Examiner" },
               ]).map((opt) => (
                 <button
                   key={opt.id}
@@ -303,10 +309,8 @@ function RegisterForm() {
 
           {/* Examiner info banner */}
           {role === "examiner" && !otpSent && (
-            <div className="mx-5 mb-1 px-3.5 py-2.5 rounded-lg text-[12px] leading-relaxed" style={{ background: "rgba(0,4,232,0.05)", color: "rgba(5,5,8,0.55)", textAlign: isRTL ? "right" : "left" }}>
-              {isRTL 
-                ? "سيتم مراجعة طلبك من قبل المسؤول قبل تفعيل حسابك."
-                : "Your request will be reviewed by an admin before your account is activated."}
+            <div className="mx-5 mb-1 px-3.5 py-2.5 rounded-lg text-[12px] leading-relaxed" style={{ background: "rgba(0,4,232,0.05)", color: "rgba(5,5,8,0.55)" }}>
+              Your request will be reviewed by an admin before your account is activated.
             </div>
           )}
 
@@ -317,8 +321,8 @@ function RegisterForm() {
 
             {/* Full name — both roles */}
             <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)", textAlign: isRTL ? "right" : "left" }}>
-                {t("fullNameLabel")}
+              <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)" }}>
+                Full name
               </label>
               <input
                 type="text"
@@ -326,21 +330,15 @@ function RegisterForm() {
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="e.g. Mohammed Al-Qahtani"
                 className="w-full px-3.5 py-2.5 rounded-lg border text-[14px] outline-none transition-all"
-                style={{ borderColor: "#e8e8f0", color: "#050508", textAlign: "left" }}
-                dir="ltr"
+                style={{ borderColor: "#e8e8f0", color: "#050508" }}
                 disabled={otpSent}
               />
-              {isRTL && (
-                <span className="block text-[10px] text-amber-600 mt-1">
-                  {t("englishOnlyHint")}
-                </span>
-              )}
             </div>
 
             {/* National ID / Iqama — both roles */}
             <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)", textAlign: isRTL ? "right" : "left" }}>
-                {t("nationalIdLabel")}
+              <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)" }}>
+                National ID or Iqama number
               </label>
               <input
                 type="text"
@@ -348,16 +346,15 @@ function RegisterForm() {
                 onChange={(e) => setNationalId(e.target.value)}
                 placeholder="10-digit National ID or Iqama"
                 className="w-full px-3.5 py-2.5 rounded-lg border text-[14px] outline-none transition-all"
-                style={{ borderColor: "#e8e8f0", color: "#050508", textAlign: "left" }}
-                dir="ltr"
+                style={{ borderColor: "#e8e8f0", color: "#050508" }}
                 disabled={otpSent}
               />
             </div>
 
             {/* Email — both roles */}
             <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)", textAlign: isRTL ? "right" : "left" }}>
-                {t("emailAddressLabel")}
+              <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)" }}>
+                Email address
               </label>
               <input
                 type="email"
@@ -365,8 +362,7 @@ function RegisterForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 className="w-full px-3.5 py-2.5 rounded-lg border text-[14px] outline-none transition-all"
-                style={{ borderColor: "#e8e8f0", color: "#050508", textAlign: "left" }}
-                dir="ltr"
+                style={{ borderColor: "#e8e8f0", color: "#050508" }}
                 disabled={otpSent}
               />
             </div>
@@ -374,22 +370,21 @@ function RegisterForm() {
             {/* Hospital name — claimant only */}
             {role === "claimant" && (
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className="overflow-hidden">
-                <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)", textAlign: isRTL ? "right" : "left" }}>
-                  {t("hospitalNameLabel")}
+                <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)" }}>
+                  Hospital name
                 </label>
                 <select
                   value={hospitalSelection}
                   onChange={(e) => { setHospitalSelection(e.target.value); if (e.target.value !== "__other__") setCustomHospital(""); }}
                   className="w-full px-3.5 py-2.5 rounded-lg border text-[14px] outline-none transition-all"
-                  style={{ borderColor: "#e8e8f0", color: "#050508", background: "#fff", textAlign: "left" }}
-                  dir="ltr"
+                  style={{ borderColor: "#e8e8f0", color: "#050508", background: "#fff" }}
                   disabled={otpSent}
                 >
-                  <option value="" disabled>{t("selectHospitalPlaceholder")}</option>
+                  <option value="" disabled>Select a hospital</option>
                   {PREDEFINED_HOSPITALS.map((h) => (
                     <option key={h} value={h}>{h}</option>
                   ))}
-                  <option value="__other__">{t("otherHospitalOption")}</option>
+                  <option value="__other__">Other</option>
                 </select>
                 {hospitalSelection === "__other__" && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className="overflow-hidden mt-2">
@@ -397,17 +392,11 @@ function RegisterForm() {
                       type="text"
                       value={customHospital}
                       onChange={(e) => setCustomHospital(e.target.value)}
-                      placeholder={t("customHospitalPlaceholder")}
+                      placeholder="Enter hospital name"
                       className="w-full px-3.5 py-2.5 rounded-lg border text-[14px] outline-none transition-all"
-                      style={{ borderColor: "#e8e8f0", color: "#050508", textAlign: "left" }}
-                      dir="ltr"
+                      style={{ borderColor: "#e8e8f0", color: "#050508" }}
                       disabled={otpSent}
                     />
-                    {isRTL && (
-                      <span className="block text-[10px] text-amber-600 mt-1">
-                        {t("englishOnlyHint")}
-                      </span>
-                    )}
                   </motion.div>
                 )}
               </motion.div>
@@ -415,11 +404,11 @@ function RegisterForm() {
 
             {/* Phone — both roles */}
             <div>
-              <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)", textAlign: isRTL ? "right" : "left" }}>
-                {t("phoneNumberLabel")}
+              <label className="block text-[12px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "rgba(5,5,8,0.4)" }}>
+                Phone number
               </label>
               <div className="flex items-center rounded-lg border overflow-hidden transition-all" style={{ borderColor: "#e8e8f0" }}>
-                <span className={`flex items-center justify-center w-[52px] h-[42px] text-[13px] font-medium flex-shrink-0 ${isRTL ? "border-l" : "border-r"}`} style={{ background: "#f8f8fc", borderColor: "#e8e8f0", color: "rgba(5,5,8,0.38)" }} dir="ltr">
+                <span className="flex items-center justify-center w-[52px] h-[42px] text-[13px] font-medium flex-shrink-0 border-r" style={{ background: "#f8f8fc", borderColor: "#e8e8f0", color: "rgba(5,5,8,0.38)" }}>
                   +966
                 </span>
                 <input
@@ -432,7 +421,6 @@ function RegisterForm() {
                   placeholder="5XXXXXXXX"
                   className="flex-1 px-3 py-2.5 text-[14px] outline-none bg-transparent"
                   style={{ color: "#050508" }}
-                  dir="ltr"
                   disabled={otpSent}
                 />
               </div>
@@ -446,13 +434,13 @@ function RegisterForm() {
               <div className="px-5 py-4">
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-[12px] font-semibold uppercase tracking-widest" style={{ color: "rgba(5,5,8,0.4)" }}>
-                    {t("verificationCodeLabel")}
+                    Verification code
                   </label>
-                  <span className="text-[11px]" style={{ color: "rgba(5,5,8,0.3)" }} dir="ltr">
-                    {t("sentTo")} {formattedPhone}
+                  <span className="text-[11px]" style={{ color: "rgba(5,5,8,0.3)" }}>
+                    Sent to {formattedPhone}
                   </span>
                 </div>
-                <div className="flex gap-2 justify-center" onPaste={handleOtpPaste} dir="ltr">
+                <div className="flex gap-2 justify-center" onPaste={handleOtpPaste}>
                   {otp.map((digit, i) => (
                     <input
                       key={i}
@@ -473,8 +461,7 @@ function RegisterForm() {
                   className="mt-3 text-[12px] font-medium w-full text-center"
                   style={{ color: "rgba(5,5,8,0.35)" }}
                 >
-                  {t("didntGetCode")}{" "}
-                  <span style={{ color: "#0004E8" }}>{t("resendBtn")}</span>
+                  Didn&apos;t get it? <span style={{ color: "#0004E8" }}>Resend</span>
                 </button>
               </div>
             </motion.div>
@@ -496,21 +483,21 @@ function RegisterForm() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  {otpSent ? (role === "examiner" ? t("submittingReqBtnLabel") : t("registeringBtnLabel")) : t("sendingCodeBtn")}
+                  {otpSent ? (role === "examiner" ? "Submitting request..." : "Creating account...") : "Sending code..."}
                 </>
               ) : otpSent ? (
-                role === "examiner" ? t("submitRequestBtnLabel") : t("registerBtnLabel")
+                role === "examiner" ? "Submit Request" : "Create Account"
               ) : (
-                t("continueBtn")
+                "Continue"
               )}
             </button>
           </div>
         </div>
 
         <p className="mt-5 text-center text-[13px]" style={{ color: "rgba(5,5,8,0.38)" }}>
-          {t("alreadyHaveAccount")}{" "}
+          Already have an account?{" "}
           <Link href="/login" className="font-semibold" style={{ color: "#0004E8" }}>
-            {t("signInBtn")}
+            Sign in
           </Link>
         </p>
       </motion.div>
